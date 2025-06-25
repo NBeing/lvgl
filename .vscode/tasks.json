@@ -1,0 +1,79 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "PIO: Build Simulator",
+            "type": "shell",
+            "command": "pio",
+            "args": ["run", "-e", "desktop"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": ["relative", "${workspaceRoot}"],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "PIO: Run Simulator",
+            "type": "shell",
+            "command": "${workspaceFolder}/.pio/build/desktop/program",
+            "windows": {
+                "command": "${workspaceFolder}\\.pio\\build\\desktop\\program.exe"
+            },
+            "group": "test",
+            "dependsOn": "PIO: Build Simulator",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "PIO: Build and Upload ESP32",
+            "type": "shell",
+            "command": "pio",
+            "args": ["run", "-e", "rymcu-esp32-s3-devkitc-1", "-t", "upload"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "PIO: Monitor ESP32",
+            "type": "shell",
+            "command": "pio",
+            "args": ["device", "monitor", "-e", "rymcu-esp32-s3-devkitc-1"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Clean All",
+            "type": "shell",
+            "command": "pio",
+            "args": ["run", "-t", "clean"],
+            "group": "build"
+        }
+    ]
+}

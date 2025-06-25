@@ -1,0 +1,56 @@
+{
+    // PlatformIO settings
+    "platformio-ide.defaultEnvironment": "desktop",
+    "platformio-ide.autoRebuildAutocompleteIndex": true,
+    "platformio-ide.activateProjectOnTextEditorChange": false,
+    
+    // C/C++ IntelliSense settings
+    "C_Cpp.default.compilerPath": "",
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.intelliSenseMode": "gcc-x64",
+    "C_Cpp.default.configurationProvider": "ms-vscode.vscode-json",
+    
+    // LVGL-specific settings
+    "files.associations": {
+        "*.h": "c",
+        "*.c": "c",
+        "*.hpp": "cpp",
+        "*.cpp": "cpp",
+        "lv_conf.h": "c",
+        "lvgl.h": "c"
+    },
+    
+    // File exclusions for better performance
+    "files.exclude": {
+        "**/.pio": true,
+        "**/build": true,
+        "**/.vscode/.browse.c_cpp.db*": true
+    },
+    
+    // Search exclusions
+    "search.exclude": {
+        "**/.pio": true,
+        "**/build": true
+    },
+    
+    // Git settings
+    "git.ignoreLimitWarning": true,
+    
+    // Editor settings for embedded development
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.rulers": [80, 120],
+    "editor.wordWrap": "off",
+    
+    // Auto-save for faster iteration
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    
+    // Terminal settings
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
+    "terminal.integrated.env.windows": {
+        "PATH": "${env:PATH};${workspaceFolder}\\scripts"
+    }
+}
+

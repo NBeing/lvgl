@@ -1,0 +1,19 @@
+{
+    // See http://go.microsoft.com/fwlink/?LinkId=827846
+    // for the documentation about the extensions.json format
+    "recommendations": [
+        "formulahendry.code-runner",
+        "marus25.cortex-debug",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.hexeditor",
+        "ms-vscode.vscode-json",
+        "platformio.platformio-ide",
+        "twxs.cmake"
+    ],
+    "unwantedRecommendations": [
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.vscode-arduino"
+    ]
+}
