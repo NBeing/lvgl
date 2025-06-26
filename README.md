@@ -12,7 +12,7 @@ The test program is for a MIDI synth. This has been configured to work with my .
 ### 1. **Clone the Repository**
 
 ```sh
-git clone <your-repo-url>
+git clone https://github.com/NBeing/lvgl
 cd lvgl
 ```
 

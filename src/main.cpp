@@ -1,19 +1,132 @@
 // src/main.cpp - Main application entry point
-#include "lvgl.h"
+#include <lvgl.h>
 #include <iostream>
-#include <algorithm>  // For std::max, std::min
-#include <functional> // For std::function
-#include <memory>     // For std::unique_ptr
-#include <unordered_map>
-
-#ifdef ESP32_BUILD
-#include <Arduino.h>
-#endif
-
-#ifdef DESKTOP_BUILD
-#include <SDL2/SDL.h>
 #include <chrono>
+
+#if defined(ESP32_BUILD)
+#include <LovyanGFX.hpp>
+
+// --- Display driver setup for ST7796S with adjacent pins ---
+class LGFX_ST7796S : public lgfx::LGFX_Device {
+    lgfx::Panel_ST7796   _panel_instance;
+    lgfx::Bus_SPI        _bus_instance;
+    lgfx::Light_PWM      _light_instance;
+    lgfx::Touch_XPT2046  _touch_instance;
+
+public:
+    LGFX_ST7796S(void) {
+        { // SPI bus config
+            auto cfg = _bus_instance.config();
+            cfg.spi_host = SPI3_HOST; // <-- Use SPI3_HOST for ESP32-S3
+            cfg.spi_mode = 0;
+            cfg.freq_write = 10000000; // 10 MHz
+            cfg.freq_read  = 4000000;  // 8 MHz            
+            cfg.spi_3wire  = false;
+            cfg.use_lock   = true;
+            cfg.dma_channel = 1;
+            cfg.pin_sclk = 12;   // SCK
+            cfg.pin_mosi = 11;   // MOSI
+            cfg.pin_miso = -1;   // Not used
+            cfg.pin_dc   = 13;   // DC/RS
+            _bus_instance.config(cfg);
+            _panel_instance.setBus(&_bus_instance);
+        }
+        { // Panel config
+            auto cfg = _panel_instance.config();
+            cfg.pin_cs = 10;     // CS
+            cfg.pin_rst = 9;    // RESET (or -1 if tied to 3.3V)
+            cfg.pin_busy = -1;
+            cfg.memory_width  = 320;
+            cfg.memory_height = 480;
+            cfg.panel_width   = 320;
+            cfg.panel_height  = 480;
+            cfg.offset_x = 0;
+            cfg.offset_y = 0;
+            cfg.offset_rotation = 0;
+            cfg.dummy_read_pixel = 8;
+            cfg.dummy_read_bits  = 1;
+            cfg.readable   = false;
+            cfg.invert     = true;
+            cfg.rgb_order  = false;
+            cfg.dlen_16bit = false;
+            cfg.bus_shared = false;
+            _panel_instance.config(cfg);
+        }
+        { // Backlight config (optional)
+            auto cfg = _light_instance.config();
+            cfg.pin_bl = 21;         // LED (PWM OK)
+            cfg.invert = false;
+            cfg.freq   = 44100;
+            cfg.pwm_channel = 7;
+            _light_instance.config(cfg);
+            _panel_instance.setLight(&_light_instance);
+        }
+        { // Touch config
+            auto cfg = _touch_instance.config();
+            cfg.x_min = 0;
+            cfg.x_max = 479;
+            cfg.y_min = 0;
+            cfg.y_max = 319;
+            cfg.pin_int = 4;    // T_IRQ
+            cfg.bus_shared = false;
+            cfg.spi_host = SPI2_HOST; // Use a different SPI bus than display
+            cfg.freq = 1000000;
+            cfg.pin_sclk = 17;  // T_CLK
+            cfg.pin_mosi = 14;  // T_DIN
+            cfg.pin_miso = 15;  // T_D0
+            cfg.pin_cs   = 16;  // T_CS
+            _touch_instance.config(cfg);
+            _panel_instance.setTouch(&_touch_instance);
+        }
+        setPanel(&_panel_instance);
+    }
+};
+
+LGFX_ST7796S tft;
+
+// --- LVGL 9.3.0 display buffer and flush callback ---
+static lv_color_t *buf1 = nullptr;
+size_t buffer_pixels = 480 * 40;
+static lv_display_t *display = nullptr;
+
+void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
+    uint32_t w = area->x2 - area->x1 + 1;
+    uint32_t h = area->y2 - area->y1 + 1;
+    tft.startWrite();
+    tft.setAddrWindow(area->x1, area->y1, w, h);
+    tft.pushColors((uint16_t *)px_map, w * h, true);
+    tft.endWrite();
+    lv_display_flush_ready(disp);
+}
+
+void hal_setup_display() {
+    tft.begin();
+    tft.setRotation(1); // Landscape
+
+    buffer_pixels = tft.width() * 40; // 40 lines, adjust as needed
+    if (buf1) heap_caps_free(buf1);
+    buf1 = (lv_color_t *)heap_caps_malloc(buffer_pixels * sizeof(lv_color_t), MALLOC_CAP_DMA);
+
+    display = lv_display_create(tft.width(), tft.height());
+    lv_display_set_flush_cb(display, my_disp_flush);
+    lv_display_set_buffers(display, buf1, NULL, buffer_pixels * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_PARTIAL);
+}
+
+void hal_init() {
+    // No-op for ESP32, but required for cross-platform compatibility
+}
+
+void hal_delay(int ms) {
+    delay(ms);
+}
+#else
+// Desktop simulator HAL
+#include <SDL2/SDL.h>
+#include <functional>
+#include <unordered_map>
+#include <memory>
 #include <thread>
+#include "hal.h"
 #endif
 
 // Forward declarations
@@ -204,264 +317,29 @@ void MidiDial::click_event_cb(lv_event_t* e) {
         }
         dial->setValue(new_value);
         
-        std::cout << "🎛️ MIDI Dial clicked! New value: " << new_value << std::endl;
+        std::cout << "MIDI Dial clicked! New value: " << new_value << std::endl;
     }
 }
 
-// ==============================================
-// PLATFORM-SPECIFIC HAL IMPLEMENTATION
-// ==============================================
+#if defined(ESP32_BUILD)
+static lv_indev_t* touch_indev = nullptr;
 
-#ifdef DESKTOP_BUILD
-static SDL_Window* window = nullptr;
-static SDL_Renderer* renderer = nullptr;
-static SDL_Texture* texture = nullptr;
-static lv_display_t* display = nullptr;
-static lv_indev_t* indev = nullptr;
-static lv_color_t* buf1 = nullptr;
-static int buffer_size = 0;
-// Mouse input state
-static int mouse_x = 0;
-static int mouse_y = 0;
-static bool mouse_pressed = false;
-
-// Mouse input callback for LVGL
-void mouse_read(lv_indev_t* indev_drv, lv_indev_data_t* data) {
-    (void)indev_drv;  // Suppress unused parameter warning
-    
-    // Get current window size to scale coordinates correctly
-    int window_w, window_h;
-    SDL_GetWindowSize(window, &window_w, &window_h);
-    
-    // Get current LVGL display size
-    int display_w = lv_display_get_horizontal_resolution(display);
-    int display_h = lv_display_get_vertical_resolution(display);
-    
-    // Scale mouse coordinates from window size to LVGL display size
-    int scaled_x = (mouse_x * display_w) / window_w;
-    int scaled_y = (mouse_y * display_h) / window_h;
-    
-    // Clamp coordinates to valid range
-    scaled_x = std::max(0, std::min(display_w - 1, scaled_x));
-    scaled_y = std::max(0, std::min(display_h - 1, scaled_y));
-    
-    data->point.x = scaled_x;
-    data->point.y = scaled_y;
-    data->state = mouse_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
-}
-
-// SDL display flush callback for LVGL 9.x
-void sdl_display_flush(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
-    if (!renderer || !texture) {
-        lv_display_flush_ready(disp);
-        return;
-    }
-
-    uint32_t w = (area->x2 - area->x1 + 1);
-    uint32_t h = (area->y2 - area->y1 + 1);
-
-    SDL_Rect dst_rect;
-    dst_rect.x = area->x1;
-    dst_rect.y = area->y1;
-    dst_rect.w = w;
-    dst_rect.h = h;
-
-    // For 32-bit LVGL colors, each pixel is 4 bytes (ARGB)
-    int pitch = w * 4;
-
-    SDL_UpdateTexture(texture, &dst_rect, px_map, pitch);
-    
-    SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-
-    lv_display_flush_ready(disp);
-}
-
-void handle_window_resize(int new_width, int new_height) {
-    std::cout << "Handling window resize: " << new_width << "x" << new_height << std::endl;
-    
-    // Recreate the SDL texture with new size
-    if (texture) {
-        SDL_DestroyTexture(texture);
-    }
-    
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, new_width, new_height);
-    if (!texture) {
-        std::cerr << "Failed to recreate texture: " << SDL_GetError() << std::endl;
-        return;
-    }
-    
-    // Recreate LVGL buffer for new size (larger buffer = fewer strips)
-    if (buf1) delete[] buf1;
-    
-    // Use larger buffer for smoother rendering (1/3 of screen instead of 1/10)
-    buffer_size = (new_width * new_height) / 3;
-    buf1 = new lv_color_t[buffer_size];
-    
-    // Update LVGL display size and buffer
-    if (display) {
-        lv_display_set_resolution(display, new_width, new_height);
-        lv_display_set_buffers(display, buf1, nullptr, buffer_size * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_PARTIAL);
-        
-        // Force a complete screen refresh
-        lv_obj_invalidate(lv_screen_active());
-        lv_refr_now(display);
-        
-        std::cout << "LVGL display updated to: " << new_width << "x" << new_height << " with larger buffer" << std::endl;
+// LVGL touch read callback
+void touch_read_cb(lv_indev_t* indev_drv, lv_indev_data_t* data) {
+    uint16_t x, y;
+    if (tft.getTouch(&x, &y)) {
+        data->point.x = x;
+        data->point.y = y;
+        data->state = LV_INDEV_STATE_PRESSED;
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
     }
 }
 
-void hal_init() {
-    std::cout << "Initializing Desktop HAL (SDL2) for Regolith/i3" << std::endl;
-    
-    SDL_SetHint(SDL_HINT_VIDEODRIVER, "x11");
-    SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
-    SDL_SetHint(SDL_HINT_VIDEO_X11_WINDOW_VISUALID, "");
-    SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
-    
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
-        return;
-    }
-    
-    window = SDL_CreateWindow("LVGL Synth GUI Simulator",
-                             SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                             800, 480, 
-                             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-    
-    if (!window) {
-        std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        return;
-    }
-    
-    SDL_SetWindowMinimumSize(window, 400, 240);
-    
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!renderer) {
-        std::cout << "Hardware acceleration failed, trying software renderer..." << std::endl;
-        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-    }
-    
-    if (!renderer) {
-        std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        return;
-    }
-    
-    // Create initial texture with window size
-    int window_w, window_h;
-    SDL_GetWindowSize(window, &window_w, &window_h);
-    
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, window_w, window_h);
-    if (!texture) {
-        std::cerr << "Texture could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        return;
-    }
-    
-    std::cout << "SDL2 initialized successfully with i3/Regolith optimizations! Initial size: " << window_w << "x" << window_h << std::endl;
-}
-
-void hal_setup_display() {
-    std::cout << "Setting up LVGL display driver" << std::endl;
-    
-    // Get initial window size for proper LVGL setup
-    int window_w, window_h;
-    SDL_GetWindowSize(window, &window_w, &window_h);
-    
-    // Allocate larger buffer for smoother rendering
-    buffer_size = (window_w * window_h) / 3;  // 1/3 of screen = fewer strips
-    buf1 = new lv_color_t[buffer_size];
-    
-    display = lv_display_create(window_w, window_h);  // Use actual window size
-    if (!display) {
-        std::cerr << "Failed to create LVGL display!" << std::endl;
-        return;
-    }
-    
-    // Use single buffer with larger size for better performance
-    lv_display_set_buffers(display, buf1, nullptr, buffer_size * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_PARTIAL);
-    lv_display_set_flush_cb(display, sdl_display_flush);
-    
-    // Set up mouse input device
-    indev = lv_indev_create();
-    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
-    lv_indev_set_read_cb(indev, mouse_read);
-    
-    lv_obj_invalidate(lv_screen_active());
-    
-    std::cout << "LVGL display driver with optimized rendering (" << window_w << "x" << window_h << ", buffer: " << buffer_size << " pixels)" << std::endl;
-}
-
-void hal_delay(int ms) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-}
-
-void handle_events() {
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_QUIT) {
-            std::cout << "Quit event received, exiting..." << std::endl;
-            exit(0);
-        }
-        else if (e.type == SDL_WINDOWEVENT) {
-            switch (e.window.event) {
-                case SDL_WINDOWEVENT_RESIZED:
-                case SDL_WINDOWEVENT_SIZE_CHANGED:
-                    std::cout << "Window resized to: " << e.window.data1 << "x" << e.window.data2 << std::endl;
-                    handle_window_resize(e.window.data1, e.window.data2);
-                    break;
-                case SDL_WINDOWEVENT_FOCUS_GAINED:
-                    std::cout << "Window gained focus" << std::endl;
-                    // Force refresh when gaining focus (useful in i3)
-                    lv_obj_invalidate(lv_screen_active());
-                    break;
-                case SDL_WINDOWEVENT_FOCUS_LOST:
-                    std::cout << "Window lost focus" << std::endl;
-                    break;
-                case SDL_WINDOWEVENT_EXPOSED:
-                    // Window needs to be redrawn (common in tiling WMs)
-                    lv_obj_invalidate(lv_screen_active());
-                    break;
-            }
-        }
-        else if (e.type == SDL_MOUSEBUTTONDOWN) {
-            mouse_x = e.button.x;
-            mouse_y = e.button.y;
-            mouse_pressed = true;
-        }
-        else if (e.type == SDL_MOUSEBUTTONUP) {
-            mouse_x = e.button.x;
-            mouse_y = e.button.y;
-            mouse_pressed = false;
-        }
-        else if (e.type == SDL_MOUSEMOTION) {
-            mouse_x = e.motion.x;
-            mouse_y = e.motion.y;
-        }
-        else if (e.type == SDL_KEYDOWN) {
-            switch (e.key.keysym.sym) {
-                case SDLK_ESCAPE:
-                    std::cout << "Escape pressed, exiting..." << std::endl;
-                    exit(0);
-                    break;
-                case SDLK_F11:
-                    {
-                        static bool fullscreen = false;
-                        fullscreen = !fullscreen;
-                        SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-                        std::cout << "Fullscreen " << (fullscreen ? "enabled" : "disabled") << std::endl;
-                    }
-                    break;
-                case SDLK_F5:
-                    // Manual refresh key (useful for debugging)
-                    std::cout << "F5 pressed - forcing screen refresh" << std::endl;
-                    lv_obj_invalidate(lv_screen_active());
-                    lv_refr_now(display);
-                    break;
-            }
-        }
-    }
+void hal_setup_touch() {
+    touch_indev = lv_indev_create();
+    lv_indev_set_type(touch_indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(touch_indev, touch_read_cb);
 }
 #endif
 
@@ -477,6 +355,9 @@ public:
         hal_init();
         lv_init();
         hal_setup_display();
+        #if defined(ESP32_BUILD)
+            hal_setup_touch();
+        #endif
         create_demo_ui();
         
         std::cout << "Synth GUI initialized successfully!" << std::endl;
@@ -495,9 +376,9 @@ public:
         
         lv_timer_handler();
         
-#ifdef DESKTOP_BUILD
-        handle_events();
-#endif
+        #ifdef DESKTOP_BUILD
+                handle_events();
+        #endif
         
         hal_delay(5);
     }
@@ -534,15 +415,15 @@ void create_demo_ui() {
     
     // Set up value change callbacks
     cutoff_dial->onValueChanged([](int value) {
-        std::cout << "🎚️ Filter Cutoff changed to: " << value << " (CC74)" << std::endl;
+        std::cout << "Filter Cutoff changed to: " << value << " (CC74)" << std::endl;
     });
     
     resonance_dial->onValueChanged([](int value) {
-        std::cout << "🌊 Resonance changed to: " << value << " (CC71)" << std::endl;
+        std::cout << "Resonance changed to: " << value << " (CC71)" << std::endl;
     });
     
     volume_dial->onValueChanged([](int value) {
-        std::cout << "🔊 Volume changed to: " << value << " (CC7)" << std::endl;
+        std::cout << "Volume changed to: " << value << " (CC7)" << std::endl;
     });
     
     // Add instructions
@@ -580,12 +461,12 @@ void create_demo_ui() {
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0xFF101010), 0);
     lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_COVER, 0);
     
-    std::cout << "🎛️ MIDI Synth GUI created with 3 dials!" << std::endl;
+    std::cout << "MIDI Synth GUI created with 3 dials!" << std::endl;
 }
 
 // MIDI CC handler function
 void handleMidiCC(int cc_number, int value) {
-    std::cout << "📡 MIDI CC received: CC" << cc_number << " = " << value << std::endl;
+    std::cout << "MIDI CC received: CC" << cc_number << " = " << value << std::endl;
     
     if (cutoff_dial && cutoff_dial->getMidiCC() == cc_number) {
         cutoff_dial->setValue(value);
@@ -601,6 +482,7 @@ SynthApp app;
 
 #ifdef DESKTOP_BUILD
 int main() {
+
     app.setup();
     
     std::cout << "Starting main loop (press Ctrl+C or close window to exit)" << std::endl;
@@ -612,9 +494,9 @@ int main() {
     return 0;
 }
 #endif
-
 #ifdef ESP32_BUILD
 void setup() {
+    Serial.begin(115200);
     app.setup();
 }
 
