@@ -135,3 +135,67 @@ bash scripts/get_board_conf.sh
 - `platformio.ini` — PlatformIO environments and build flags
 
 ---
+
+1. How LVGL Works (General Overview)
+
+LVGL is a graphics library that draws GUIs into a framebuffer (a memory buffer representing the screen).
+LVGL is platform-agnostic: it doesn’t know or care about your actual hardware or OS.
+To display graphics, LVGL needs you to provide:
+A display driver (with a flush callback)
+A buffer (where it draws pixels before you send them to the screen)
+
+2. What the HAL Does
+The HAL is your “glue” between LVGL and your actual hardware or OS.
+It provides:
+Functions to initialize the display/input
+The flush callback (to send LVGL’s buffer to the real screen)
+Input callbacks (for mouse/touch, etc.)
+Timing/delay functions
+
+3. Desktop (SDL) Mode
+
+How It Works:
+
+LVGL draws into a buffer (e.g., buf1), which is just a chunk of RAM.
+When LVGL wants to update the screen, it calls your flush callback (sdl_display_flush).
+In sdl_display_flush, you:
+Copy the relevant part of the buffer (px_map) to an SDL texture using SDL_UpdateTexture.
+Render the texture to the SDL window using SDL_RenderCopy and SDL_RenderPresent.
+Result: The LVGL GUI appears in your SDL window.
+Buffer Flow:
+
+4. ESP32 Mode
+
+How It Works:
+
+LVGL draws into a buffer (e.g., buf1), just like on desktop.
+When LVGL wants to update the screen, it calls your flush callback (e.g., my_disp_flush).
+In your ESP32 flush callback, you:
+Send the buffer (or just the changed area) to the display hardware (e.g., via SPI to an ILI9341 TFT).
+When done, call lv_display_flush_ready() to tell LVGL it can reuse the buffer.
+Result: The LVGL GUI appears on your physical display.
+
+Buffer Flow:
+
+5. Key Points
+LVGL always draws to a buffer you provide.
+The HAL’s flush callback is responsible for getting that buffer onto the real screen, whether that’s an SDL window or a hardware display.
+On desktop, you use SDL to show the buffer in a window.
+On ESP32, you use a display driver (like SPI) to send the buffer to the screen.
+
+6. Why This Abstraction?
+
+Portability: Your app code and GUI logic don’t care about the hardware.
+
+Maintainability: You only need to change the HAL to support new hardware or platforms.
+
+7. Summary Table
+Platform	LVGL Draws To	Flush Callback	Sends Buffer To
+Desktop	RAM buffer	sdl_display_flush	SDL texture/window
+ESP32	RAM buffer	my_disp_flush	SPI/I2C display driver
+
+In short:
+
+LVGL draws to a buffer.
+The HAL’s flush callback sends that buffer to the screen (SDL or hardware).
+This makes your GUI code portable and hardware-independent!

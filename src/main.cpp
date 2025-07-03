@@ -2,85 +2,10 @@
 #include <lvgl.h>
 #include <iostream>
 #include <chrono>
+#include "components/MidiDial.h"
 
 #if defined(ESP32_BUILD)
-#include <LovyanGFX.hpp>
-
-// --- Display driver setup for ST7796S with adjacent pins ---
-class LGFX_ST7796S : public lgfx::LGFX_Device {
-    lgfx::Panel_ST7796   _panel_instance;
-    lgfx::Bus_SPI        _bus_instance;
-    lgfx::Light_PWM      _light_instance;
-    lgfx::Touch_XPT2046  _touch_instance;
-
-public:
-    LGFX_ST7796S(void) {
-        { // SPI bus config
-            auto cfg = _bus_instance.config();
-            cfg.spi_host = SPI3_HOST; // <-- Use SPI3_HOST for ESP32-S3
-            cfg.spi_mode = 0;
-            cfg.freq_write = 10000000; // 10 MHz
-            cfg.freq_read  = 4000000;  // 8 MHz            
-            cfg.spi_3wire  = false;
-            cfg.use_lock   = true;
-            cfg.dma_channel = 1;
-            cfg.pin_sclk = 12;   // SCK
-            cfg.pin_mosi = 11;   // MOSI
-            cfg.pin_miso = -1;   // Not used
-            cfg.pin_dc   = 13;   // DC/RS
-            _bus_instance.config(cfg);
-            _panel_instance.setBus(&_bus_instance);
-        }
-        { // Panel config
-            auto cfg = _panel_instance.config();
-            cfg.pin_cs = 10;     // CS
-            cfg.pin_rst = 9;    // RESET (or -1 if tied to 3.3V)
-            cfg.pin_busy = -1;
-            cfg.memory_width  = 320;
-            cfg.memory_height = 480;
-            cfg.panel_width   = 320;
-            cfg.panel_height  = 480;
-            cfg.offset_x = 0;
-            cfg.offset_y = 0;
-            cfg.offset_rotation = 0;
-            cfg.dummy_read_pixel = 8;
-            cfg.dummy_read_bits  = 1;
-            cfg.readable   = false;
-            cfg.invert     = true;
-            cfg.rgb_order  = false;
-            cfg.dlen_16bit = false;
-            cfg.bus_shared = false;
-            _panel_instance.config(cfg);
-        }
-        { // Backlight config (optional)
-            auto cfg = _light_instance.config();
-            cfg.pin_bl = 21;         // LED (PWM OK)
-            cfg.invert = false;
-            cfg.freq   = 44100;
-            cfg.pwm_channel = 7;
-            _light_instance.config(cfg);
-            _panel_instance.setLight(&_light_instance);
-        }
-        { // Touch config
-            auto cfg = _touch_instance.config();
-            cfg.x_min = 0;
-            cfg.x_max = 479;
-            cfg.y_min = 0;
-            cfg.y_max = 319;
-            cfg.pin_int = 4;    // T_IRQ
-            cfg.bus_shared = false;
-            cfg.spi_host = SPI2_HOST; // Use a different SPI bus than display
-            cfg.freq = 1000000;
-            cfg.pin_sclk = 17;  // T_CLK
-            cfg.pin_mosi = 14;  // T_DIN
-            cfg.pin_miso = 15;  // T_D0
-            cfg.pin_cs   = 16;  // T_CS
-            _touch_instance.config(cfg);
-            _panel_instance.setTouch(&_touch_instance);
-        }
-        setPanel(&_panel_instance);
-    }
-};
+#include "hardware/LGFX_ST7796S.h"
 
 LGFX_ST7796S tft;
 
@@ -121,225 +46,67 @@ void hal_delay(int ms) {
 }
 #else
 // Desktop simulator HAL
-#include <SDL2/SDL.h>
-#include <functional>
-#include <unordered_map>
-#include <memory>
-#include <thread>
-#include "hal.h"
+    #include <SDL2/SDL.h>
+    #include <functional>
+    #include <unordered_map>
+    #include <memory>
+    #include <thread>
+    #include "hal.h"
 #endif
 
 // Forward declarations
 void create_demo_ui();
 void handle_events();
 
-// ==============================================
-// MIDI DIAL WIDGET CLASS - 8-Bit Style
-// ==============================================
-
-class MidiDial {
-public:
-    MidiDial(lv_obj_t* parent, const char* label = "", int x = 0, int y = 0);
-    ~MidiDial();
-    
-    void setValue(int value);
-    int getValue() const { return current_value_; }
-    void setRange(int min_val, int max_val);
-    void setColor(lv_color_t color);
-    void setPosition(int x, int y);
-    void onValueChanged(std::function<void(int)> callback);
-    lv_obj_t* getObject() { return container_; }
-    void setMidiCC(int cc_number) { midi_cc_ = cc_number; }
-    int getMidiCC() const { return midi_cc_; }
-
-private:
-    lv_obj_t* container_;
-    lv_obj_t* value_label_;
-    lv_obj_t* name_label_;
-    lv_obj_t* arc_display_;
-    
-    int current_value_;
-    int min_value_;
-    int max_value_;
-    int midi_cc_;
-    lv_color_t arc_color_;
-    std::function<void(int)> value_callback_;
-    
-    void updateDisplay();
-    void setupStyling();
-    static void click_event_cb(lv_event_t* e);
-};
-
-// Static map to link LVGL objects back to C++ instances
-static std::unordered_map<lv_obj_t*, MidiDial*> dial_widget_map;
-
-MidiDial::MidiDial(lv_obj_t* parent, const char* label, int x, int y) 
-    : current_value_(0)
-    , min_value_(0) 
-    , max_value_(127)
-    , midi_cc_(-1)
-    , arc_color_(lv_color_hex(0xFF00FF00))
-{
-    // Create container object
-    container_ = lv_obj_create(parent);
-    lv_obj_set_size(container_, 80, 80);
-    lv_obj_set_pos(container_, x, y);
-    
-    // Store mapping for static callbacks
-    dial_widget_map[container_] = this;
-    
-    // Create parameter name label
-    name_label_ = lv_label_create(container_);
-    lv_label_set_text(name_label_, label);
-    lv_obj_set_style_text_color(name_label_, lv_color_hex(0xFFCCCCCC), 0);
-    lv_obj_set_style_text_font(name_label_, &lv_font_montserrat_10, 0);
-    lv_obj_align(name_label_, LV_ALIGN_TOP_MID, 0, 2);
-    
-    // Create arc display using LVGL's built-in arc widget
-    arc_display_ = lv_arc_create(container_);
-    lv_obj_set_size(arc_display_, 50, 50);
-    lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, -5);
-    
-    // Configure arc for semicircle (8-bit style)
-    lv_arc_set_bg_angles(arc_display_, 180, 0);  // Background semicircle
-    lv_arc_set_angles(arc_display_, 180, 180);   // Start with no fill
-    lv_arc_set_range(arc_display_, min_value_, max_value_);
-    
-    // Style the arc for 8-bit look
-    lv_obj_set_style_arc_color(arc_display_, lv_color_hex(0xFF444444), LV_PART_MAIN);
-    lv_obj_set_style_arc_width(arc_display_, 6, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(arc_display_, arc_color_, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_width(arc_display_, 6, LV_PART_INDICATOR);
-    
-    // Hide the knob for cleaner look
-    lv_obj_set_style_bg_opa(arc_display_, LV_OPA_TRANSP, LV_PART_KNOB);
-    lv_obj_set_style_border_opa(arc_display_, LV_OPA_TRANSP, LV_PART_KNOB);
-    lv_obj_set_style_pad_all(arc_display_, 0, LV_PART_KNOB);
-    
-    // Create value display label
-    value_label_ = lv_label_create(container_);
-    lv_label_set_text(value_label_, "000");
-    lv_obj_set_style_text_color(value_label_, arc_color_, 0);
-    lv_obj_set_style_text_font(value_label_, &lv_font_montserrat_12, 0);
-    lv_obj_align(value_label_, LV_ALIGN_BOTTOM_MID, 0, -2);
-    
-    // Set up event handlers for click interaction
-    lv_obj_add_event_cb(container_, click_event_cb, LV_EVENT_CLICKED, this);
-    
-    // Apply 8-bit retro styling
-    setupStyling();
-    
-    // Initialize display
-    updateDisplay();
-    
-    std::cout << "Created MIDI dial: " << label << std::endl;
-}
-
-MidiDial::~MidiDial() {
-    dial_widget_map.erase(container_);
-}
-
-void MidiDial::setValue(int value) {
-    if (value < min_value_) value = min_value_;
-    if (value > max_value_) value = max_value_;
-    
-    if (current_value_ != value) {
-        current_value_ = value;
-        updateDisplay();
-        
-        if (value_callback_) {
-            value_callback_(value);
-        }
-        
-        std::cout << "MIDI Dial value changed to: " << value << std::endl;
-    }
-}
-
-void MidiDial::setRange(int min_val, int max_val) {
-    min_value_ = min_val;
-    max_value_ = max_val;
-    setValue(current_value_);
-}
-
-void MidiDial::setColor(lv_color_t color) {
-    arc_color_ = color;
-    lv_obj_set_style_text_color(value_label_, color, 0);
-    lv_obj_set_style_arc_color(arc_display_, color, LV_PART_INDICATOR);
-}
-
-void MidiDial::setPosition(int x, int y) {
-    lv_obj_set_pos(container_, x, y);
-}
-
-void MidiDial::onValueChanged(std::function<void(int)> callback) {
-    value_callback_ = callback;
-}
-
-void MidiDial::updateDisplay() {
-    char text[8];
-    snprintf(text, sizeof(text), "%03d", current_value_);
-    lv_label_set_text(value_label_, text);
-    
-    // Update arc value using LVGL's built-in arc widget
-    lv_arc_set_value(arc_display_, current_value_);
-    
-    // Calculate angle for the arc (semicircle from 180° to 0°)
-    int value_range = max_value_ - min_value_;
-    if (value_range > 0) {
-        int angle_range = 180;  // Semicircle
-        int current_angle = 180 - ((current_value_ * angle_range) / value_range);
-        lv_arc_set_angles(arc_display_, 180, current_angle);
-    }
-}
-
-void MidiDial::setupStyling() {
-    // 8-bit retro container styling
-    lv_obj_set_style_bg_color(container_, lv_color_hex(0xFF1a1a1a), 0);
-    lv_obj_set_style_bg_opa(container_, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(container_, lv_color_hex(0xFF666666), 0);
-    lv_obj_set_style_border_width(container_, 2, 0);
-    lv_obj_set_style_border_opa(container_, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(container_, 4, 0);
-    lv_obj_set_style_pad_all(container_, 4, 0);
-}
-
-void MidiDial::click_event_cb(lv_event_t* e) {
-    lv_obj_t* obj = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    
-    auto it = dial_widget_map.find(obj);
-    if (it != dial_widget_map.end()) {
-        MidiDial* dial = it->second;
-        
-        // Increment value on click (for testing)
-        int new_value = dial->getValue() + 10;
-        if (new_value > dial->max_value_) {
-            new_value = dial->min_value_;
-        }
-        dial->setValue(new_value);
-        
-        std::cout << "MIDI Dial clicked! New value: " << new_value << std::endl;
-    }
-}
-
 #if defined(ESP32_BUILD)
+#define RAW_MIN_X  0
+#define RAW_MAX_X  479
+#define RAW_MIN_Y  0
+#define RAW_MAX_Y  319
+
+#define DISP_WIDTH  480
+#define DISP_HEIGHT 320
+
 static lv_indev_t* touch_indev = nullptr;
+
+// Store last known good touch point
+static uint16_t last_touch_x = 0;
+static uint16_t last_touch_y = 0;
+
+// Map raw touch to display coordinates
+// static uint16_t map_touch_x(uint16_t raw_x) {
+//     if (raw_x < RAW_MIN_X) raw_x = RAW_MIN_X;
+//     if (raw_x > RAW_MAX_X) raw_x = RAW_MAX_X;
+// return (uint16_t)(((raw_x - RAW_MIN_X) * (DISP_WIDTH - 1)) / (RAW_MAX_X - RAW_MIN_X));}
+// static uint16_t map_touch_y(uint16_t raw_y) {
+//     if (raw_y < RAW_MIN_Y) raw_y = RAW_MIN_Y;
+//     if (raw_y > RAW_MAX_Y) raw_y = RAW_MAX_Y;
+// return (uint16_t)(((raw_y - RAW_MIN_Y) * (DISP_HEIGHT - 1)) / (RAW_MAX_Y - RAW_MIN_Y));}
 
 // LVGL touch read callback
 void touch_read_cb(lv_indev_t* indev_drv, lv_indev_data_t* data) {
-    uint16_t x, y;
-    if (tft.getTouch(&x, &y)) {
-        data->point.x = x;
-        data->point.y = y;
+    std::cout << "=== touch read callback ===" << std::endl;
+    uint16_t raw_x, raw_y;
+    if (tft.getTouch(&raw_x, &raw_y)) {
+        std::cout << printf("Raw touch: x=%u y=%u\n", raw_x, raw_y) << std::endl;
+        last_touch_x = raw_x;// map_touch_x(raw_x);
+        last_touch_y = raw_y;//map_touch_y(raw_y);
+        data->point.x = last_touch_x;
+        data->point.y = last_touch_y;
         data->state = LV_INDEV_STATE_PRESSED;
     } else {
+        data->point.x = last_touch_x;
+        data->point.y = last_touch_y;
         data->state = LV_INDEV_STATE_RELEASED;
     }
 }
 
 void hal_setup_touch() {
+    std::cout << "=== setting up to touchie touch ===" << std::endl;
     touch_indev = lv_indev_create();
     lv_indev_set_type(touch_indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(touch_indev, touch_read_cb);
+    std::cout << "=== done setting touchie touch ===" << std::endl;
 }
 #endif
 
@@ -355,7 +122,11 @@ public:
         hal_init();
         lv_init();
         hal_setup_display();
+        std::cout << "=== going to touchie touch ===" << std::endl;
+
         #if defined(ESP32_BUILD)
+            std::cout << "=== touchie touch ===" << std::endl;
+
             hal_setup_touch();
         #endif
         create_demo_ui();
@@ -365,6 +136,8 @@ public:
     
     void loop() {
         // Update LVGL tick
+        // std::cout << "=== touchie touch ===" << std::endl;
+
         static auto last_tick = std::chrono::steady_clock::now();
         auto current_time = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
@@ -377,7 +150,7 @@ public:
         lv_timer_handler();
         
         #ifdef DESKTOP_BUILD
-                handle_events();
+            handle_events();
         #endif
         
         hal_delay(5);
@@ -392,7 +165,7 @@ std::unique_ptr<MidiDial> volume_dial;
 void create_demo_ui() {
     // Add title
     lv_obj_t* title = lv_label_create(lv_screen_active());
-    lv_label_set_text(title, "🎛️ LVGL Synth GUI - 8-Bit Style");
+    lv_label_set_text(title, "LVGL Synth GUI - 8-Bit Style");
     lv_obj_set_style_text_color(title, lv_color_hex(0xFF00FF00), 0);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
@@ -450,7 +223,7 @@ void create_demo_ui() {
         static int test_value = 0;
         test_value = (test_value + 25) % 128;
         
-        std::cout << "🎵 Simulating MIDI CC - setting all dials to: " << test_value << std::endl;
+        std::cout << "Simulating MIDI CC - setting all dials to: " << test_value << std::endl;
         
         cutoff_dial->setValue(test_value);
         resonance_dial->setValue(test_value);
@@ -482,7 +255,6 @@ SynthApp app;
 
 #ifdef DESKTOP_BUILD
 int main() {
-
     app.setup();
     
     std::cout << "Starting main loop (press Ctrl+C or close window to exit)" << std::endl;
@@ -497,6 +269,9 @@ int main() {
 #ifdef ESP32_BUILD
 void setup() {
     Serial.begin(115200);
+    hal_delay(2000);
+    Serial.println("Serial works!");
+
     app.setup();
 }
 
