@@ -89,6 +89,8 @@ MidiDial::MidiDial(lv_obj_t* parent, const char* label, int x, int y)
     
     // Set up event handlers for click interaction
     lv_obj_add_event_cb(container_, click_event_cb, LV_EVENT_CLICKED, this);
+    // Make the arc interactive for dragging
+    lv_obj_add_event_cb(arc_display_, arc_event_cb, LV_EVENT_VALUE_CHANGED, this);
     
     // Apply 8-bit retro styling
     setupStyling();
@@ -148,16 +150,8 @@ void MidiDial::updateDisplay() {
     snprintf(text, sizeof(text), "%03d", current_value_);
     lv_label_set_text(value_label_, text);
     
-    // Update arc value using LVGL's built-in arc widget
+    // Only use LVGL's built-in arc value system
     lv_arc_set_value(arc_display_, current_value_);
-    
-    // Calculate angle for the arc (semicircle from 180° to 0°)
-    int value_range = max_value_ - min_value_;
-    if (value_range > 0) {
-        int angle_range = 180;  // Semicircle
-        int current_angle = 180 - ((current_value_ * angle_range) / value_range);
-        lv_arc_set_angles(arc_display_, 180, current_angle);
-    }
 }
 
 void MidiDial::setupStyling() {
@@ -186,5 +180,30 @@ void MidiDial::click_event_cb(lv_event_t* e) {
         dial->setValue(new_value);
         
         std::cout << "MIDI Dial clicked! New value: " << new_value << std::endl;
+    }
+}
+
+void MidiDial::arc_event_cb(lv_event_t* e) {
+    lv_obj_t* arc = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    MidiDial* dial = static_cast<MidiDial*>(lv_event_get_user_data(e));
+    
+    if (dial) {
+        // Get the new value from the arc widget
+        int new_value = lv_arc_get_value(arc);
+        
+        // Update our internal state
+        dial->current_value_ = new_value;
+        
+        // Update the text display
+        char text[8];
+        snprintf(text, sizeof(text), "%03d", new_value);
+        lv_label_set_text(dial->value_label_, text);
+        
+        // Trigger callback if set
+        if (dial->value_callback_) {
+            dial->value_callback_(new_value);
+        }
+        
+        std::cout << "MIDI Dial dragged! New value: " << new_value << std::endl;
     }
 }

@@ -37,4 +37,5 @@ private:
     void updateDisplay();
     void setupStyling();
     static void click_event_cb(lv_event_t* e);
+    static void arc_event_cb(lv_event_t* e);
 };
