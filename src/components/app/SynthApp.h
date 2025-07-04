@@ -2,44 +2,47 @@
 
 #include <lvgl.h>
 #include <memory>
-#include <functional>
 
 // Forward declarations
 class MidiDial;
+
+#if defined(ESP32_BUILD)
+class ESP32Display;
+#endif
 
 class SynthApp {
 public:
     SynthApp();
     ~SynthApp();
     
-    // Main application lifecycle
     void setup();
     void loop();
     
-    // Platform-specific initialization
-    void initHardware();
-    void initDesktop();
-    
-    // UI creation and management
-    void createUI();
-    void handleEvents();
-    
-    // MIDI handling
-    void handleMidiCC(int cc_number, int value);
+    // Event handlers
     void simulateMidiCC();
-    void updateStatus(const char* control, int value);
+    void handleMidiCC(int cc_number, int value);
     
 private:
+    void initHardware();
+    void initDesktop();
+    void createUI();
+    void handleEvents();
+    void updateStatus(const char* control, int value);
+    
+    // Platform abstraction
+    void platformDelay(int ms);
+    unsigned long getPlatformTick();
+    
     // UI components
     std::unique_ptr<MidiDial> cutoff_dial_;
     std::unique_ptr<MidiDial> resonance_dial_;
     std::unique_ptr<MidiDial> volume_dial_;
     lv_obj_t* status_label_;
     
-    // Application state
-    bool initialized_;
+    // Hardware driver (ESP32 only)
+#if defined(ESP32_BUILD)
+    std::unique_ptr<ESP32Display> display_driver_;
+#endif
     
-    // Platform-specific helpers
-    void platformDelay(int ms);
-    unsigned long getPlatformTick();
+    bool initialized_;
 };

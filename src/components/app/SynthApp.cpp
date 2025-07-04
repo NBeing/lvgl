@@ -1,3 +1,4 @@
+// Update SynthApp to use the modular display driver
 #include "SynthApp.h"
 #include "../MidiDial.h"
 #include <iostream>
@@ -6,16 +7,20 @@
 #include <cstring>
 
 #if defined(ESP32_BUILD)
-    #include "../../hardware/LGFX_ST7796S.h"
-    extern LGFX_ST7796S tft;  // Defined in main.cpp
-    extern uint32_t millis_cb();  // Tick function from main.cpp
+    #include "../../hardware/ESP32Display.h"
+    extern uint32_t millis_cb();
 #endif
 
 SynthApp::SynthApp() : initialized_(false) {
+#if defined(ESP32_BUILD)
+    display_driver_ = std::make_unique<ESP32Display>();
+#endif
 }
 
 SynthApp::~SynthApp() {
-    // Cleanup handled by smart pointers
+    // Cleanup handled by smart pointers automatically
+    // ESP32Display destructor will be called automatically when display_driver_ goes out of scope
+    std::cout << "SynthApp destructor called" << std::endl;
 }
 
 void SynthApp::setup() {
@@ -30,91 +35,23 @@ void SynthApp::setup() {
 
 void SynthApp::initHardware() {
 #if defined(ESP32_BUILD)
-    // ESP32 hardware initialization
+    // Initialize LVGL
     lv_init();
-    
-    // Set up custom tick function AFTER lv_init()
     lv_tick_set_cb(millis_cb);
     
-    // Display setup
-    tft.begin();
-    tft.setRotation(1);
+    // Initialize modular display driver
+    if (!display_driver_->initialize()) {
+        std::cerr << "Failed to initialize display!" << std::endl;
+        return;
+    }
     
-    std::cout << "Display info:" << std::endl;
-    std::cout << "  Width: " << tft.width() << std::endl;
-    std::cout << "  Height: " << tft.height() << std::endl;
-    std::cout << "  Rotation: " << tft.getRotation() << std::endl;
-    
-    size_t buffer_pixels = tft.width() * 40;
-    lv_color_t* buf1 = (lv_color_t*)heap_caps_malloc(
-        buffer_pixels * sizeof(lv_color_t), MALLOC_CAP_DMA);
-    
-    lv_display_t* display = lv_display_create(tft.width(), tft.height());
-    lv_display_set_flush_cb(display, [](lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
-        uint32_t w = area->x2 - area->x1 + 1;
-        uint32_t h = area->y2 - area->y1 + 1;
-        tft.startWrite();
-        tft.setAddrWindow(area->x1, area->y1, w, h);
-        tft.pushPixels((uint16_t *)px_map, w * h, true);
-        tft.endWrite();
-        lv_display_flush_ready(disp);
-    });
-    lv_display_set_buffers(display, buf1, NULL, 
-        buffer_pixels * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_PARTIAL);
-    
-    // Touch setup with calibrated coordinates AND debug output
-    lv_indev_t* touch_indev = lv_indev_create();
-    lv_indev_set_type(touch_indev, LV_INDEV_TYPE_POINTER);
-    lv_indev_set_read_cb(touch_indev, [](lv_indev_t* indev, lv_indev_data_t* data) {
-        uint16_t raw_x, raw_y;
-        
-        uint_fast8_t touch_count = tft.getTouch(&raw_x, &raw_y);
-        
-        if (touch_count > 0) {
-            // No Y masking needed - values are already in correct range
-            uint16_t fixed_y = raw_y;  // Don't mask - use direct values
-            
-            // NEW calibration based on your ACTUAL current hardware values:
-            // Top-left: X=449, Y=41-50    → should map to (0, 0)
-            // Top-right: X=37-41, Y=20-30 → should map to (479, 0)  
-            // Bottom-left: X=452, Y=292   → should map to (0, 319)
-            // Bottom-right: X=60-61, Y=290-292 → should map to (479, 319)
-            
-            const int TOUCH_MIN_X = 37;   // Right edge (smallest X)
-            const int TOUCH_MAX_X = 452;  // Left edge (largest X)
-            const int TOUCH_MIN_Y = 20;   // Top edge (smallest Y)
-            const int TOUCH_MAX_Y = 292;  // Bottom edge (largest Y)
-            
-            // X mapping: 452 (left) → 0, 37 (right) → 479
-            int mapped_x = ((TOUCH_MAX_X - raw_x) * 480) / (TOUCH_MAX_X - TOUCH_MIN_X);
-            int mapped_y = ((fixed_y - TOUCH_MIN_Y) * 320) / (TOUCH_MAX_Y - TOUCH_MIN_Y);
-            
-            // Clamp to screen bounds
-            mapped_x = std::max(0, std::min(mapped_x, 479));
-            mapped_y = std::max(0, std::min(mapped_y, 319));
-            
-            data->point.x = mapped_x;
-            data->point.y = mapped_y;
-            data->state = LV_INDEV_STATE_PRESSED;
-            
-            // Debug output
-            // std::cout << "Touch: raw(" << raw_x << "," << fixed_y 
-            //           << ") → mapped(" << mapped_x << "," << mapped_y << ")" << std::endl;
-            
-        } else {
-            data->state = LV_INDEV_STATE_RELEASED;
-        }
-    });
-    
-    std::cout << "ESP32 hardware initialization complete!" << std::endl;
-    std::cout << "Touch panel configured and ready" << std::endl;
+    // Optional: Enable touch debug for testing
+    // display_driver_->setTouchDebug(true);
     
 #else
-    // Desktop initialization with official SDL driver
     initDesktop();
 #endif
 }
-
 void SynthApp::initDesktop() {
 #ifndef ESP32_BUILD
     lv_init();
