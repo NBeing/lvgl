@@ -34,7 +34,7 @@
 #define LV_USE_TEXTAREA         1
 #define LV_USE_TABLE            1
 
-// Font settings - Add the missing fonts
+// Font settings
 #define LV_FONT_MONTSERRAT_8    1
 #define LV_FONT_MONTSERRAT_10   1
 #define LV_FONT_MONTSERRAT_12   1
@@ -45,11 +45,11 @@
 #define LV_FONT_MONTSERRAT_22   1
 #define LV_FONT_MONTSERRAT_24   1
 
-// SDL driver - only for desktop builds
-#ifdef DESKTOP_BUILD
+// SDL driver - Fix the macro check
+#ifndef ESP32_BUILD  // Use ESP32_BUILD instead of DESKTOP_BUILD
     #define LV_USE_SDL              1
     #if LV_USE_SDL
-        #define LV_SDL_INCLUDE_PATH    "SDL2/SDL.h"
+        #define LV_SDL_INCLUDE_PATH    <SDL2/SDL.h>
         #define LV_SDL_BUF_COUNT       2
         #define LV_SDL_FULLSCREEN      0
         #define LV_SDL_DIRECT_EXIT     1

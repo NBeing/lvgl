@@ -1,4 +1,7 @@
 // src/hardware/ESP32Display.cpp
+#if defined(ESP32_BUILD)  // Only compile for ESP32
+
+
 #include "ESP32Display.h"
 #include <iostream>
 #include <algorithm>
@@ -114,3 +117,4 @@ void ESP32Display::touchCallback(lv_indev_t* indev, lv_indev_data_t* data) {
         data->state = LV_INDEV_STATE_RELEASED;
     }
 }
+#endif // ESP32_BUILD

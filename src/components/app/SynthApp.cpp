@@ -54,25 +54,34 @@ void SynthApp::initHardware() {
 }
 void SynthApp::initDesktop() {
 #ifndef ESP32_BUILD
+    std::cout << "Initializing desktop simulation..." << std::endl;
+    
+    // Initialize LVGL
     lv_init();
     
-    // Create SDL window using official LVGL driver
-    lv_display_t* display = lv_sdl_window_create(800, 480);
-    if (!display) {
+    // Use LVGL's built-in SDL integration
+    lv_display_t* disp = lv_sdl_window_create(480, 320);
+    if (!disp) {
         std::cerr << "Failed to create SDL window!" << std::endl;
         return;
     }
     
-    // Create input devices
-    lv_sdl_mouse_create();
-    lv_sdl_keyboard_create();
+    // Create SDL mouse input
+    lv_indev_t* mouse = lv_sdl_mouse_create();
     
-    // Set up keyboard navigation
-    lv_group_t* group = lv_group_create();
-    lv_group_set_default(group);
+    // Optional: Create SDL keyboard input
+    lv_indev_t* kb = lv_sdl_keyboard_create();
+    
+    // Set up tick function
+    lv_tick_set_cb([]() -> uint32_t {
+        static auto start = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+    });
+    
+    std::cout << "Desktop simulation initialized with LVGL SDL!" << std::endl;
 #endif
 }
-
 void SynthApp::createUI() {
     // Set dark background for 8-bit retro feel
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x0a0a0a), 0);
