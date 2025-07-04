@@ -1,0 +1,7 @@
+[
+    {
+        "key": "ctrl+shift+alt+u",
+        "command": "workbench.action.tasks.runTask",
+        "args": "PIO: Build and Upload ESP32"
+    }
+]

@@ -69,17 +69,18 @@ public:
         { // Touch config
             auto cfg = _touch_instance.config();
             cfg.x_min = 0;
-            cfg.x_max = 319;
+            cfg.x_max = 4095;
             cfg.y_min = 0;
-            cfg.y_max = 479;
-            cfg.pin_int = 4;    // T_IRQ
-            cfg.bus_shared = false;
-            cfg.spi_host = SPI2_HOST; // Use a different SPI bus than display
+            cfg.y_max = 4095;
+            cfg.pin_int = 4;         // T_IRQ pin
+            cfg.bus_shared = false;  // Touch uses separate SPI bus
+            cfg.offset_rotation = 0;
+            cfg.spi_host = SPI2_HOST;  // or SPI3_HOST
             cfg.freq = 1000000;
-            cfg.pin_sclk = 17;  // T_CLK
-            cfg.pin_mosi = 14;  // T_DIN
-            cfg.pin_miso = 15;  // T_D0
-            cfg.pin_cs   = 16;  // T_CS
+            cfg.pin_sclk = 17;       // T_CLK
+            cfg.pin_mosi = 14;       // T_DIN  
+            cfg.pin_miso = 15;       // T_DO
+            cfg.pin_cs   = 16;       // T_CS
             _touch_instance.config(cfg);
             _panel_instance.setTouch(&_touch_instance);
         }

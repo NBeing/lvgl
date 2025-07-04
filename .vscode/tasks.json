@@ -5,7 +5,11 @@
             "label": "PIO: Build Simulator",
             "type": "shell",
             "command": "pio",
-            "args": ["run", "-e", "desktop"],
+            "args": [
+                "run",
+                "-e",
+                "desktop"
+            ],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -15,7 +19,10 @@
             },
             "problemMatcher": {
                 "owner": "cpp",
-                "fileLocation": ["relative", "${workspaceRoot}"],
+                "fileLocation": [
+                    "relative",
+                    "${workspaceRoot}"
+                ],
                 "pattern": {
                     "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
                     "file": 1,
@@ -43,23 +50,50 @@
             }
         },
         {
+            "label": "PIO: Upload + Monitor ESP32",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "PIO: Build and Upload ESP32",
+                "PIO: Monitor ESP32"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            }
+        },
+        {
             "label": "PIO: Build and Upload ESP32",
             "type": "shell",
             "command": "pio",
-            "args": ["run", "-e", "rymcu-esp32-s3-devkitc-1", "-t", "upload"],
+            "args": [
+                "run",
+                "-e",
+                "rymcu-esp32-s3-devkitc-1",
+                "-t",
+                "upload"
+            ],
             "group": "build",
             "presentation": {
                 "echo": true,
                 "reveal": "always",
                 "focus": false,
                 "panel": "shared"
-            }
+            },
+            "problemMatcher": []
         },
         {
             "label": "PIO: Monitor ESP32",
             "type": "shell",
             "command": "pio",
-            "args": ["device", "monitor", "-e", "rymcu-esp32-s3-devkitc-1"],
+            "args": [
+                "device",
+                "monitor",
+                "-e",
+                "rymcu-esp32-s3-devkitc-1"
+            ],
             "group": "test",
             "presentation": {
                 "echo": true,
@@ -69,10 +103,36 @@
             }
         },
         {
+            "label": "PIO: Quick Deploy ESP32",
+            "type": "shell",
+            "command": "pio",
+            "args": [
+                "run",
+                "-e",
+                "rymcu-esp32-s3-devkitc-1",
+                "-t",
+                "upload",
+                "-t",
+                "monitor"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Clean All",
             "type": "shell",
             "command": "pio",
-            "args": ["run", "-t", "clean"],
+            "args": [
+                "run",
+                "-t",
+                "clean"
+            ],
             "group": "build"
         }
     ]
