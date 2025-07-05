@@ -5,7 +5,7 @@ echo "🧹 Cleaning previous build log..."
 rm -f build.log
 
 echo "🔨 Building ESP32 environment with full logging..."
-pio run -e rymcu-esp32-s3-devkitc-1 -v 2>&1 | tee build.log
+pio run -e rymcu-esp32-s3-devkitc-1 2>&1 | tee build.log
 
 echo ""
 echo "📝 Build log saved to build.log"

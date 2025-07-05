@@ -13,10 +13,10 @@
 
 SynthApp::SynthApp() : initialized_(false) {
     #if defined(ESP32_BUILD)
-        display_driver_ = std::make_unique<ESP32Display>();
+        display_driver_.reset(new ESP32Display());
     #endif
     
-    midi_handler_ = std::make_unique<MidiHandler>();
+    midi_handler_.reset(new MidiHandler());
 }
 
 SynthApp::~SynthApp() {
@@ -115,17 +115,17 @@ void SynthApp::createUI() {
     lv_obj_align(help_label, LV_ALIGN_TOP_MID, 0, 35);
     
     // Create MIDI dial widgets
-    cutoff_dial_ = std::make_unique<MidiDial>(lv_screen_active(), "CUTOFF", 80, 80);
+    cutoff_dial_.reset(new MidiDial(lv_screen_active(), "CUTOFF", 80, 80));
     cutoff_dial_->setColor(lv_color_hex(0x00FF00));  // Green
     cutoff_dial_->setMidiCC(74);
     cutoff_dial_->setValue(64);
     
-    resonance_dial_ = std::make_unique<MidiDial>(lv_screen_active(), "RESONANCE", 200, 80);
+    resonance_dial_.reset(new MidiDial(lv_screen_active(), "RESONANCE", 200, 80));
     resonance_dial_->setColor(lv_color_hex(0xFF0000));  // Red
     resonance_dial_->setMidiCC(71);
     resonance_dial_->setValue(32);
     
-    volume_dial_ = std::make_unique<MidiDial>(lv_screen_active(), "VOLUME", 320, 80);
+    volume_dial_.reset(new MidiDial(lv_screen_active(), "VOLUME", 320, 80));
     volume_dial_->setColor(lv_color_hex(0x0000FF));  // Blue
     volume_dial_->setMidiCC(7);
     volume_dial_->setValue(96);

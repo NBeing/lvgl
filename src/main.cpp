@@ -17,11 +17,13 @@ uint32_t millis_cb() {
 // Global app instance
 SynthApp app;
 
+// MIDI handler instance
+MidiHandler midi_handler;
+
 // MIDI test variables
-MidiHandler midiTest;
-unsigned long lastMidiTime = 0;
-int currentNote = 60;  // Start with Middle C
-bool noteOn = false;
+static unsigned long lastMidiTime = 0;
+static bool noteOn = false;
+static uint8_t currentNote = 60;  // Start at middle C
 
 void midiTestLoop() {
     unsigned long currentTime;
@@ -37,12 +39,12 @@ void midiTestLoop() {
     if (currentTime - lastMidiTime >= 1000) {
         if (!noteOn) {
             // Send Note On
-            midiTest.sendNoteOn(1, currentNote, 80);  // Channel 1, note, velocity 80
+            midi_handler.sendNoteOn(1, currentNote, 80);  // Channel 1, note, velocity 80
             std::cout << "🎵 MIDI Test: Note ON  - " << currentNote << " (velocity: 80)" << std::endl;
             noteOn = true;
         } else {
             // Send Note Off
-            midiTest.sendNoteOff(1, currentNote, 0);   // Channel 1, note, velocity 0
+            midi_handler.sendNoteOff(1, currentNote, 0);   // Channel 1, note, velocity 0
             std::cout << "🎵 MIDI Test: Note OFF - " << currentNote << std::endl;
             noteOn = false;
             
@@ -65,8 +67,8 @@ void setup() {
     std::cout << "=== ESP32 SynthApp Starting ===" << std::endl;
     
     // Initialize MIDI test
-    if (midiTest.initialize()) {
-        std::cout << "✅ MIDI Test initialized: " << midiTest.getConnectionStatus() << std::endl;
+    if (midi_handler.initialize()) {
+        std::cout << "✅ MIDI Test initialized: " << midi_handler.getConnectionStatus() << std::endl;
     } else {
         std::cout << "❌ MIDI Test initialization failed!" << std::endl;
     }
@@ -81,7 +83,7 @@ void loop() {
     midiTestLoop();
     
     // Update MIDI handler
-    midiTest.update();
+    midi_handler.update();
 }
 #else
 int main() {
@@ -89,8 +91,8 @@ int main() {
     
     // Initialize MIDI test with debug info
     std::cout << "🔧 Initializing MIDI handler..." << std::endl;
-    if (midiTest.initialize()) {
-        std::cout << "✅ MIDI Test initialized: " << midiTest.getConnectionStatus() << std::endl;
+    if (midi_handler.initialize()) {
+        std::cout << "✅ MIDI Test initialized: " << midi_handler.getConnectionStatus() << std::endl;
         std::cout << "💡 Check 'aconnect -l' in another terminal to see the new MIDI port" << std::endl;
         std::cout << "💡 You can also try: pw-link --list-ports | grep -i midi" << std::endl;
     } else {
@@ -108,7 +110,7 @@ int main() {
         midiTestLoop();
         
         // Update MIDI handler
-        midiTest.update();
+        midi_handler.update();
     }
     
     return 0;
