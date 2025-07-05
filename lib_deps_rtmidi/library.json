@@ -1,0 +1,12 @@
+{
+  "name": "rtmidi",
+  "build": {
+    "srcFilter": [
+      "+<RtMidi.cpp>",
+      "-<android/>",
+      "-<ios/>",
+      "-<contrib/>",
+      "-<tests/>"
+    ]
+  }
+}

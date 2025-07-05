@@ -1,201 +1,275 @@
-# LVGL GUI Base project
+# LVGL Synthesizer Controller
 
-This project is a cross-platform GUI built with [LVGL](https://lvgl.io/), supporting both desktop simulation (SDL2) and ESP32 hardware targets.  
-It uses PlatformIO for build management and includes scripts for environment setup and dependency checks.
+A cross-platform MIDI synthesizer controller built with LVGL, supporting both desktop simulation and ESP32-S3 hardware.
 
-The test program is for a MIDI synth. This has been configured to work with my .i3 desktop environment so there may be some quirks on other DE's. 
+## Features
 
----
+🎹 **Cross-Platform MIDI**: Real MIDI output on both desktop and ESP32  
+🖥️ **Desktop Simulation**: Fast development with SDL2 and RtMidi  
+📱 **ESP32-S3 Hardware**: Touchscreen display with USB MIDI output  
+🎛️ **Synthesizer UI**: Knobs, sliders, and controls for real-time parameter control  
+🔧 **Automated Builds**: PlatformIO with automated dependency management  
+
+## Hardware Targets
+
+### Desktop (Linux)
+- **Display**: SDL2 window simulation
+- **MIDI**: RtMidi with ALSA backend
+- **Development**: Fast UI iteration and testing
+
+### ESP32-S3 DevKit
+- **Display**: ST7796S TFT with LovyanGFX
+- **MIDI**: USB MIDI via Control-Surface library
+- **Hardware**: ESP32-S3 with PSRAM support
+
+## Dependencies
+
+### Desktop Dependencies
+- **LVGL 9.3.0**: UI framework
+- **RtMidi 6.0.0**: Cross-platform MIDI I/O (auto-installed)
+- **SDL2**: Graphics and input
+- **ALSA**: Linux audio system
+
+### ESP32 Dependencies  
+- **LVGL 9.3.0**: UI framework
+- **LovyanGFX 1.2.7**: High-performance display driver
+- **Control-Surface 1.2.0**: ESP32 MIDI library
+- **TFT_eSPI 2.5.43**: Display driver support
 
 ## Quick Start
 
-### 1. **Clone the Repository**
+### Prerequisites
 
-```sh
-git clone https://github.com/NBeing/lvgl
-cd lvgl
+```bash
+# Ubuntu/Debian - Install system dependencies
+sudo apt-get update
+sudo apt-get install build-essential python3-pip
+sudo apt-get install libsdl2-dev libasound2-dev  # For desktop build
+
+# Install PlatformIO
+python3 -m pip install platformio
+
+# Clone the repository
+git clone <your-repo-url>
+cd lvgl-synth-controller
 ```
 
----
+### Desktop Development
 
-### 2. **Set Up Python Virtual Environment (Optional but Recommended)**
-
-This project provides a script to create a Python virtual environment for running setup scripts and tools.
-
-```sh
-python3 scripts/setup_venv.py
-# Follow the printed instructions to activate the venv
-```
-
----
-
-### 3. **Install SDL2 (for Desktop Simulation)**
-
-The desktop simulator requires SDL2 development libraries.  
-Run the provided script to check and install SDL2:
-
-```sh
-python3 scripts/install_sdl.py
-```
-
-- On Linux, this will attempt to install via your package manager.
-- On Windows, it will check for vcpkg or guide you through manual installation.
-
-You can also diagnose SDL2 issues with:
-
-```sh
-python3 scripts/dbg_sdl.py
-```
-
----
-
-### 4. **Configure PlatformIO**
-
-All build environments are defined in `platformio.ini`.  
-- **Desktop simulation:**  
-  ```sh
-  pio run -e desktop
-  ```
-- **ESP32 hardware:**  
-  ```sh
-  pio run -e rymcu-esp32-s3-devkitc-1
-  ```
-
----
-
-### 5. **Run the Desktop Simulator**
-
-After building, run the simulator:
-
-```sh
+```bash
+# RtMidi will be automatically downloaded and installed
 pio run -e desktop
-pio run -t upload -e desktop  # Or use the VSCode task "PIO: Run Simulator"
-```
 
-Or directly:
-
-```sh
+# Run the desktop simulator
 ./.pio/build/desktop/program
 ```
 
----
+**Note**: The first build will automatically download and configure RtMidi for Linux. The build script ensures only the necessary files are included (no Android/iOS dependencies).
 
-### 6. **Board Configuration (ESP32)**
+### ESP32-S3 Hardware
 
-To fetch the ESP32 board config used in this project:
+```bash
+# Build for ESP32-S3
+pio run -e rymcu-esp32-s3-devkitc-1
 
-```sh
-bash scripts/get_board_conf.sh
+# Upload to device
+pio run -e rymcu-esp32-s3-devkitc-1 -t upload
+
+# Monitor serial output
+pio device monitor
 ```
-
----
-
-## Scripts Overview
-
-- **scripts/setup_venv.py**  
-  Creates and configures a Python virtual environment for development scripts.
-
-- **scripts/install_sdl.py**  
-  Installs SDL2 development libraries for your platform.
-
-- **scripts/dbg_sdl.py**  
-  Diagnoses SDL2 installation issues and checks for headers, libraries, and pkg-config.
-
-- **scripts/get_sdl_flags.py**  
-  Outputs the correct SDL2 compiler flags for PlatformIO based on your system.
-
-- **scripts/get_board_conf.sh**  
-  Downloads the ESP32 board configuration JSON for PlatformIO.
-
----
-
-## Troubleshooting
-
-- If SDL2 is not detected, use `scripts/dbg_sdl.py` to diagnose.
-- For missing Python dependencies, re-run `scripts/setup_venv.py`.
-- For ESP32 upload/monitor, ensure you have the correct board connected and permissions set.
-
----
-
-## Requirements
-
-- [PlatformIO](https://platformio.org/) (VSCode extension recommended)
-- Python 3.7+
-- SDL2 development libraries (for desktop simulation)
-- ESP32 toolchain (for hardware builds)
-
----
 
 ## Project Structure
 
-- `src/` — Main application source code
-- `include/` — LVGL and project headers
-- `scripts/` — Setup and utility scripts
-- `.vscode/` — VSCode workspace settings and tasks
-- `platformio.ini` — PlatformIO environments and build flags
+```
+lvgl-synth-controller/
+├── src/                          # Main source code
+│   ├── main.cpp                 # Application entry point
+│   ├── ui/                      # LVGL UI components
+│   ├── hardware/                # Hardware abstraction
+│   └── hal/                     # Hardware abstraction layer
+│       ├── desktop/             # Desktop-specific code
+│       └── esp32/               # ESP32-specific code
+├── include/                     # Header files
+│   └── lv_conf.h               # LVGL configuration
+├── lib/                        # Local libraries
+│   └── rtmidi_linux/           # Auto-generated RtMidi (desktop only)
+├── scripts/                    # Build automation
+│   └── install_rtmidi.py       # RtMidi installer script
+└── platformio.ini              # PlatformIO configuration
+```
+
+## Build Configuration
+
+### Pinned Dependencies
+
+All dependencies are pinned to specific versions for reproducible builds:
+
+- **LVGL**: `9.3.0`
+- **RtMidi**: `6.0.0` (Linux ALSA only)
+- **LovyanGFX**: Commit `5438181`
+- **Control-Surface**: Commit `f85f2e3`
+- **TFT_eSPI**: `2.5.43`
+
+### Environment-Specific Settings
+
+#### Desktop (`[env:desktop]`)
+- **Platform**: `native` (Linux x86_64)
+- **Build flags**: SDL2, ALSA, RtMidi configuration
+- **MIDI Backend**: RtMidi with ALSA
+- **Display**: SDL2 window
+
+#### ESP32-S3 (`[env:rymcu-esp32-s3-devkitc-1]`)
+- **Platform**: `espressif32@^6.4.0`
+- **Board**: ESP32-S3 DevKit with 16MB Flash, 8MB PSRAM
+- **MIDI Backend**: Control-Surface USB MIDI
+- **Display**: ST7796S via LovyanGFX
+
+## MIDI Output
+
+### Desktop
+- **Automatic port detection**: Scans for available MIDI ports
+- **Virtual port creation**: Creates "LVGL Synth Controller" if no hardware found
+- **DAW integration**: Connect to Ableton Live, FL Studio, Reaper, etc.
+- **Hardware support**: USB MIDI interfaces, synthesizers
+
+### ESP32-S3
+- **USB MIDI device**: Appears as standard MIDI controller
+- **Low latency**: Hardware USB implementation
+- **Cross-platform**: Works with any MIDI-capable software
+
+## Development Workflow
+
+### Desktop-First Development
+1. **Design UI** on desktop with fast build times
+2. **Test MIDI output** with DAW or virtual synthesizer  
+3. **Iterate quickly** without hardware dependency
+4. **Port to ESP32** when UI is finalized
+
+### Build Targets
+
+```bash
+# Clean builds
+pio run -t clean
+
+# Desktop simulation
+pio run -e desktop
+
+# ESP32-S3 hardware  
+pio run -e rymcu-esp32-s3-devkitc-1
+
+# Verbose build (debugging)
+pio run -e desktop -v
+
+# Debug build with JTAG
+pio run -e rymcu-esp32-s3-devkitc-1-debug
+```
+
+## RtMidi Installation
+
+The project includes an automated RtMidi installer (`scripts/install_rtmidi.py`) that:
+
+✅ **Downloads RtMidi 6.0.0** from GitHub  
+✅ **Extracts only required files** (`RtMidi.h`, `RtMidi.cpp`)  
+✅ **Creates proper library.json** for PlatformIO  
+✅ **Configures Linux ALSA backend** only  
+✅ **Avoids problematic dependencies** (no Android/iOS/contrib files)  
+✅ **Caches installation** (skips if already installed)  
+
+### Manual RtMidi Installation
+
+If automatic installation fails:
+
+```bash
+# Run the installer manually
+python scripts/install_rtmidi.py
+
+# Verify installation
+ls -la lib/rtmidi_linux/
+# Should contain: RtMidi.h, RtMidi.cpp, library.json
+```
+
+### Troubleshooting RtMidi
+
+```bash
+# Clean RtMidi installation
+rm -rf lib/rtmidi_linux/ .pio/
+python scripts/install_rtmidi.py
+
+# Check ALSA development headers
+pkg-config --cflags --libs alsa
+
+# Install missing dependencies
+sudo apt-get install libasound2-dev
+```
+
+## MIDI Testing
+
+### Desktop Testing
+```bash
+# List available MIDI ports
+aconnect -l
+
+# Connect to software synthesizer
+# The app will show available ports and create virtual port if needed
+```
+
+### ESP32 Testing
+```bash
+# Monitor USB MIDI on Linux
+aseqdump -p <port>
+
+# Test with amidi
+amidi -l
+amidi -p hw:X,0 -d  # Replace X with device number
+```
+
+## Contributing
+
+1. **Desktop development**: Use `pio run -e desktop` for fast iteration
+2. **Test MIDI output**: Verify with DAW or `aseqdump`
+3. **Cross-platform testing**: Ensure code works on both targets
+4. **Follow pinned versions**: Don't update dependencies without testing
+
+## Troubleshooting
+
+### Common Issues
+
+**SDL2 not found**:
+```bash
+sudo apt-get install libsdl2-dev
+```
+
+**ALSA not found**:
+```bash
+sudo apt-get install libasound2-dev
+```
+
+**RtMidi compilation errors**:
+```bash
+rm -rf lib/rtmidi_linux/ .pio/
+python scripts/install_rtmidi.py
+pio run -e desktop
+```
+
+**ESP32 upload fails**:
+```bash
+# Check USB connection and permissions
+ls -la /dev/ttyUSB* /dev/ttyACM*
+sudo usermod -a -G dialout $USER  # Then logout/login
+```
+
+### Build Flags
+
+The project uses specific build flags for each platform:
+
+**Desktop**: `-D__LINUX_ALSA__`, `-D__LITTLE_ENDIAN__`, `-DHAVE_GETTIMEOFDAY`  
+**ESP32**: `-DESP32_BUILD`, `-DBOARD_HAS_PSRAM`, `-DLV_TICK_CUSTOM`
+
+## License
+
+[Your license here]
 
 ---
 
-1. How LVGL Works (General Overview)
-
-LVGL is a graphics library that draws GUIs into a framebuffer (a memory buffer representing the screen).
-LVGL is platform-agnostic: it doesn’t know or care about your actual hardware or OS.
-To display graphics, LVGL needs you to provide:
-A display driver (with a flush callback)
-A buffer (where it draws pixels before you send them to the screen)
-
-2. What the HAL Does
-The HAL is your “glue” between LVGL and your actual hardware or OS.
-It provides:
-Functions to initialize the display/input
-The flush callback (to send LVGL’s buffer to the real screen)
-Input callbacks (for mouse/touch, etc.)
-Timing/delay functions
-
-3. Desktop (SDL) Mode
-
-How It Works:
-
-LVGL draws into a buffer (e.g., buf1), which is just a chunk of RAM.
-When LVGL wants to update the screen, it calls your flush callback (sdl_display_flush).
-In sdl_display_flush, you:
-Copy the relevant part of the buffer (px_map) to an SDL texture using SDL_UpdateTexture.
-Render the texture to the SDL window using SDL_RenderCopy and SDL_RenderPresent.
-Result: The LVGL GUI appears in your SDL window.
-Buffer Flow:
-
-4. ESP32 Mode
-
-How It Works:
-
-LVGL draws into a buffer (e.g., buf1), just like on desktop.
-When LVGL wants to update the screen, it calls your flush callback (e.g., my_disp_flush).
-In your ESP32 flush callback, you:
-Send the buffer (or just the changed area) to the display hardware (e.g., via SPI to an ILI9341 TFT).
-When done, call lv_display_flush_ready() to tell LVGL it can reuse the buffer.
-Result: The LVGL GUI appears on your physical display.
-
-Buffer Flow:
-
-5. Key Points
-LVGL always draws to a buffer you provide.
-The HAL’s flush callback is responsible for getting that buffer onto the real screen, whether that’s an SDL window or a hardware display.
-On desktop, you use SDL to show the buffer in a window.
-On ESP32, you use a display driver (like SPI) to send the buffer to the screen.
-
-6. Why This Abstraction?
-
-Portability: Your app code and GUI logic don’t care about the hardware.
-
-Maintainability: You only need to change the HAL to support new hardware or platforms.
-
-7. Summary Table
-Platform	LVGL Draws To	Flush Callback	Sends Buffer To
-Desktop	RAM buffer	sdl_display_flush	SDL texture/window
-ESP32	RAM buffer	my_disp_flush	SPI/I2C display driver
-
-In short:
-
-LVGL draws to a buffer.
-The HAL’s flush callback sends that buffer to the screen (SDL or hardware).
-This makes your GUI code portable and hardware-independent!
+🎹 **Happy synthesizing!** Connect your desktop simulator to a DAW or run on ESP32-S3 hardware for a complete MIDI controller experience.

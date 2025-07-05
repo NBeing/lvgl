@@ -1,0 +1,38 @@
+{
+  "name": "rtmidi_linux",
+  "version": "6.0.0",
+  "description": "RtMidi Linux-only build (ALSA)",
+  "keywords": [
+    "midi",
+    "alsa",
+    "linux"
+  ],
+  "authors": [
+    {
+      "name": "Gary P. Scavone",
+      "email": "gary@music.mcgill.ca"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thestk/rtmidi.git"
+  },
+  "license": "MIT",
+  "build": {
+    "flags": [
+      "-D__LINUX_ALSA__",
+      "-D__LITTLE_ENDIAN__",
+      "-DHAVE_GETTIMEOFDAY"
+    ],
+    "srcFilter": [
+      "+<RtMidi.cpp>"
+    ]
+  },
+  "frameworks": [
+    "*"
+  ],
+  "platforms": [
+    "native",
+    "linux_x86_64"
+  ]
+}
