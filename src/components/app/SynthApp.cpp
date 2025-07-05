@@ -12,14 +12,14 @@
 #endif
 
 SynthApp::SynthApp() : initialized_(false) {
-#if defined(ESP32_BUILD)
-    display_driver_ = std::make_unique<ESP32Display>();
-#endif
+    #if defined(ESP32_BUILD)
+        display_driver_ = std::make_unique<ESP32Display>();
+    #endif
+    
+    midi_handler_ = std::make_unique<MidiHandler>();
 }
 
 SynthApp::~SynthApp() {
-    // Cleanup handled by smart pointers automatically
-    // ESP32Display destructor will be called automatically when display_driver_ goes out of scope
     std::cout << "SynthApp destructor called" << std::endl;
 }
 
@@ -34,24 +34,37 @@ void SynthApp::setup() {
 }
 
 void SynthApp::initHardware() {
-#if defined(ESP32_BUILD)
-    // Initialize LVGL
-    lv_init();
-    lv_tick_set_cb(millis_cb);
-    
-    // Initialize modular display driver
-    if (!display_driver_->initialize()) {
-        std::cerr << "Failed to initialize display!" << std::endl;
-        return;
-    }
-    
-    // Optional: Enable touch debug for testing
-    // display_driver_->setTouchDebug(true);
-    
-#else
-    initDesktop();
-#endif
+    #if defined(ESP32_BUILD)
+        // Initialize LVGL
+        lv_init();
+        lv_tick_set_cb(millis_cb);
+        
+        // Initialize display
+        if (!display_driver_->initialize()) {
+            std::cerr << "Failed to initialize display!" << std::endl;
+            return;
+        }
+        
+        // Initialize MIDI
+        if (!midi_handler_->initialize()) {
+            std::cerr << "Failed to initialize MIDI!" << std::endl;
+            return;
+        }
+        
+        std::cout << "MIDI Status: " << midi_handler_->getConnectionStatus() << std::endl;
+    #else
+        initDesktop();
+        
+        // Initialize MIDI
+        if (!midi_handler_->initialize()) {
+            std::cerr << "Failed to initialize desktop MIDI!" << std::endl;
+            return;
+        }
+        
+        std::cout << "Desktop MIDI Status: " << midi_handler_->getConnectionStatus() << std::endl;
+    #endif
 }
+
 void SynthApp::initDesktop() {
 #ifndef ESP32_BUILD
     std::cout << "Initializing desktop simulation..." << std::endl;
@@ -82,39 +95,40 @@ void SynthApp::initDesktop() {
     std::cout << "Desktop simulation initialized with LVGL SDL!" << std::endl;
 #endif
 }
+
 void SynthApp::createUI() {
     // Set dark background for 8-bit retro feel
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x0a0a0a), 0);
     
     // Create title with better styling
     lv_obj_t* title = lv_label_create(lv_screen_active());
-    lv_label_set_text(title, "LVGL Synth GUI - 8-Bit Style");
+    lv_label_set_text(title, "LVGL Synth GUI - Control_Surface");
     lv_obj_set_style_text_color(title, lv_color_hex(0x00FF00), 0);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
     
     // Create help message label
     lv_obj_t* help_label = lv_label_create(lv_screen_active());
-    lv_label_set_text(help_label, "Touch dials to adjust values • CC messages sent via MIDI");
+    lv_label_set_text(help_label, "Touch dials to adjust values • MIDI via Control_Surface");
     lv_obj_set_style_text_color(help_label, lv_color_hex(0xCCCCCC), 0);
     lv_obj_set_style_text_font(help_label, &lv_font_montserrat_10, 0);
     lv_obj_align(help_label, LV_ALIGN_TOP_MID, 0, 35);
     
-    // Create MIDI dial widgets with proper spacing
+    // Create MIDI dial widgets
     cutoff_dial_ = std::make_unique<MidiDial>(lv_screen_active(), "CUTOFF", 80, 80);
     cutoff_dial_->setColor(lv_color_hex(0x00FF00));  // Green
     cutoff_dial_->setMidiCC(74);
-    cutoff_dial_->setValue(64);  // Set initial value
+    cutoff_dial_->setValue(64);
     
     resonance_dial_ = std::make_unique<MidiDial>(lv_screen_active(), "RESONANCE", 200, 80);
     resonance_dial_->setColor(lv_color_hex(0xFF0000));  // Red
     resonance_dial_->setMidiCC(71);
-    resonance_dial_->setValue(32);  // Set initial value
+    resonance_dial_->setValue(32);
     
     volume_dial_ = std::make_unique<MidiDial>(lv_screen_active(), "VOLUME", 320, 80);
     volume_dial_->setColor(lv_color_hex(0x0000FF));  // Blue
     volume_dial_->setMidiCC(7);
-    volume_dial_->setValue(96);  // Set initial value
+    volume_dial_->setValue(96);
     
     // Create "Simulate MIDI CC" button
     lv_obj_t* sim_button = lv_btn_create(lv_screen_active());
@@ -180,6 +194,7 @@ void SynthApp::loop() {
     if (!initialized_) return;
     
     lv_timer_handler();
+    midi_handler_->update();  // Process MIDI with Control_Surface
     handleEvents();
     
     platformDelay(5);
@@ -190,8 +205,13 @@ void SynthApp::handleEvents() {
 }
 
 void SynthApp::handleMidiCC(int cc_number, int value) {
-    std::cout << "MIDI CC " << cc_number << ": " << value << std::endl;
-    // Add your MIDI output logic here
+    if (!midi_handler_->isConnected()) {
+        std::cout << "MIDI not connected!" << std::endl;
+        return;
+    }
+    
+    // Send MIDI CC message on channel 1 using Control_Surface
+    midi_handler_->sendControlChange(1, cc_number, value);
 }
 
 void SynthApp::platformDelay(int ms) {

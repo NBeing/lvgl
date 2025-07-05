@@ -4,6 +4,14 @@
 // Color depth
 #define LV_COLOR_DEPTH 16
 
+// Color depth - try 32-bit for desktop to see if that helps
+#ifdef ESP32_BUILD
+    #define LV_COLOR_DEPTH 16
+    #define LV_COLOR_16_SWAP 0  // ESP32 - no swap
+#else
+    #define LV_COLOR_DEPTH 32   // Desktop - try 32-bit color
+    // #define LV_COLOR_16_SWAP 0  // Not needed for 32-bit
+#endif
 // Memory management
 #define LV_MEM_CUSTOM           1
 #define LV_MEM_SIZE             (128U * 1024U)
@@ -45,8 +53,8 @@
 #define LV_FONT_MONTSERRAT_22   1
 #define LV_FONT_MONTSERRAT_24   1
 
-// SDL driver - Fix the macro check
-#ifndef ESP32_BUILD  // Use ESP32_BUILD instead of DESKTOP_BUILD
+// SDL driver settings
+#ifndef ESP32_BUILD  
     #define LV_USE_SDL              1
     #if LV_USE_SDL
         #define LV_SDL_INCLUDE_PATH    <SDL2/SDL.h>
@@ -55,7 +63,7 @@
         #define LV_SDL_DIRECT_EXIT     1
     #endif
 #else
-    #define LV_USE_SDL              0  // Disable SDL for ESP32
+    #define LV_USE_SDL              0
 #endif
 
 // Log settings
