@@ -3,6 +3,8 @@
 #include "../MidiDial.h"
 #include "../ParameterControl.h"
 #include "../ParameterBinder.h"
+#include "../CommandManager.h"
+#include "../ButtonControl.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -20,6 +22,7 @@ SynthApp::SynthApp() : initialized_(false) {
     
     midi_handler_.reset(new MidiHandler());
     parameter_binder_.reset(new ParameterBinder());
+    command_manager_.reset(new CommandManager());
 }
 
 SynthApp::~SynthApp() {
@@ -36,6 +39,17 @@ void SynthApp::setup() {
         std::cout << "Loaded " << parameter_binder_->getParameterCount() 
                   << " parameters for " << parameter_binder_->getCurrentSynthName() << std::endl;
     }
+    
+    // Inject command manager into all parameters
+    auto all_params = parameter_binder_->getAllParameters();
+    for (auto param : all_params) {
+        param->setCommandManager(command_manager_.get());
+    }
+    
+    // Set up history change callback to update UI
+    command_manager_->setHistoryChangedCallback([this]() {
+        updateUndoRedoButtons();
+    });
     
     initHardware();
     createUI();
@@ -128,8 +142,14 @@ void SynthApp::createUI() {
     // Create NEW parameter-aware dials
     createParameterDials();
     
+    // Create NEW button controls
+    createButtonControls();
+    
     // Create OLD legacy dials for comparison
     createLegacyDials();
+    
+    // Create undo/redo controls
+    createUndoRedoControls();
     
     // Create "Simulate MIDI CC" button
     lv_obj_t* sim_button = lv_btn_create(lv_screen_active());
@@ -212,7 +232,9 @@ void SynthApp::createParameterDials() {
         {lfo_rate_dial_, "LFO 1 Rate"}
     };
     
-    for (auto& [dial, param_name] : bindings) {
+    for (auto& binding : bindings) {
+        auto dial = binding.first;
+        auto param_name = binding.second;
         auto parameter = parameter_binder_->findParameterByName(param_name);
         if (parameter) {
             dial->bindParameter(parameter);
@@ -298,6 +320,158 @@ void SynthApp::createLegacyDials() {
             lv_label_set_text(status_label_, status_text);
         }
     });
+}
+
+void SynthApp::createButtonControls() {
+    std::cout << "Creating button controls..." << std::endl;
+    
+    const int btn_x = 380;
+    const int btn_y = 70;
+    const int btn_spacing = 50;
+    
+    // Create filter enable toggle button
+    filter_enable_btn_ = std::make_shared<ButtonControl>(lv_screen_active(), btn_x, btn_y, 80, 35);
+    filter_enable_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
+    filter_enable_btn_->setText("FILTER");
+    filter_enable_btn_->setToggleColors(lv_color_hex(0x444444), lv_color_hex(0x00AA00));
+    filter_enable_btn_->setToggleValues(0, 127);
+    
+    // Create LFO sync toggle button
+    lfo_sync_btn_ = std::make_shared<ButtonControl>(lv_screen_active(), btn_x, btn_y + btn_spacing, 80, 35);
+    lfo_sync_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
+    lfo_sync_btn_->setText("LFO SYNC");
+    lfo_sync_btn_->setToggleColors(lv_color_hex(0x444444), lv_color_hex(0xFF8800));
+    lfo_sync_btn_->setToggleValues(0, 127);
+    
+    // Create trigger button
+    trigger_btn_ = std::make_shared<ButtonControl>(lv_screen_active(), btn_x, btn_y + 2*btn_spacing, 80, 35);
+    trigger_btn_->setMode(ButtonControl::ButtonMode::TRIGGER);
+    trigger_btn_->setText("TRIGGER");
+    trigger_btn_->setColors(lv_color_hex(0x666666), lv_color_hex(0xFF0000));
+    trigger_btn_->setTriggerValue(127, 0);
+    
+    // Try to bind to parameters (these may not exist in the demo set)
+    auto filter_param = parameter_binder_->findParameterByName("Filter 1 Enable");
+    if (filter_param) {
+        filter_enable_btn_->bindParameter(filter_param);
+        std::cout << "Bound filter enable button to parameter" << std::endl;
+    }
+    
+    auto lfo_param = parameter_binder_->findParameterByName("LFO 1 Sync");
+    if (lfo_param) {
+        lfo_sync_btn_->bindParameter(lfo_param);
+        std::cout << "Bound LFO sync button to parameter" << std::endl;
+    }
+    
+    auto trigger_param = parameter_binder_->findParameterByName("Trigger");
+    if (trigger_param) {
+        trigger_btn_->bindParameter(trigger_param);
+        std::cout << "Bound trigger button to parameter" << std::endl;
+    }
+    
+    // Set up callbacks for all buttons
+    filter_enable_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+        if (midi_handler_->isConnected() && param) {
+            midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+        }
+        std::cout << "Filter Enable: " << (value > 63 ? "ON" : "OFF") << std::endl;
+    });
+    
+    lfo_sync_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+        if (midi_handler_->isConnected() && param) {
+            midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+        }
+        std::cout << "LFO Sync: " << (value > 63 ? "ON" : "OFF") << std::endl;
+    });
+    
+    trigger_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+        if (midi_handler_->isConnected() && param) {
+            midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+        }
+        std::cout << "Trigger: " << static_cast<int>(value) << std::endl;
+    });
+}
+
+void SynthApp::createUndoRedoControls() {
+    std::cout << "Creating undo/redo controls..." << std::endl;
+    
+    // Create undo button
+    undo_btn_ = lv_btn_create(lv_screen_active());
+    lv_obj_set_size(undo_btn_, 70, 30);
+    lv_obj_align(undo_btn_, LV_ALIGN_BOTTOM_LEFT, 10, -10);
+    
+    // Style undo button
+    lv_obj_set_style_bg_color(undo_btn_, lv_color_hex(0x333333), LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(undo_btn_, lv_color_hex(0x888888), LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(undo_btn_, 1, LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(undo_btn_, 4, LV_STATE_DEFAULT);
+    
+    undo_label_ = lv_label_create(undo_btn_);
+    lv_label_set_text(undo_label_, "Undo");
+    lv_obj_set_style_text_color(undo_label_, lv_color_hex(0xCCCCCC), LV_STATE_DEFAULT);
+    lv_obj_center(undo_label_);
+    
+    // Create redo button
+    redo_btn_ = lv_btn_create(lv_screen_active());
+    lv_obj_set_size(redo_btn_, 70, 30);
+    lv_obj_align(redo_btn_, LV_ALIGN_BOTTOM_LEFT, 90, -10);
+    
+    // Style redo button
+    lv_obj_set_style_bg_color(redo_btn_, lv_color_hex(0x333333), LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(redo_btn_, lv_color_hex(0x888888), LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(redo_btn_, 1, LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(redo_btn_, 4, LV_STATE_DEFAULT);
+    
+    redo_label_ = lv_label_create(redo_btn_);
+    lv_label_set_text(redo_label_, "Redo");
+    lv_obj_set_style_text_color(redo_label_, lv_color_hex(0xCCCCCC), LV_STATE_DEFAULT);
+    lv_obj_center(redo_label_);
+    
+    // Set up event callbacks
+    lv_obj_add_event_cb(undo_btn_, [](lv_event_t* e) {
+        SynthApp* app = static_cast<SynthApp*>(lv_event_get_user_data(e));
+        app->command_manager_->undo();
+    }, LV_EVENT_CLICKED, this);
+    
+    lv_obj_add_event_cb(redo_btn_, [](lv_event_t* e) {
+        SynthApp* app = static_cast<SynthApp*>(lv_event_get_user_data(e));
+        app->command_manager_->redo();
+    }, LV_EVENT_CLICKED, this);
+    
+    // Initial update
+    updateUndoRedoButtons();
+}
+
+void SynthApp::updateUndoRedoButtons() {
+    if (!command_manager_) return;
+    
+    // Update undo button state
+    bool can_undo = command_manager_->canUndo();
+    lv_obj_set_style_bg_color(undo_btn_, 
+                             can_undo ? lv_color_hex(0x004400) : lv_color_hex(0x333333), 
+                             LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(undo_label_, 
+                               can_undo ? lv_color_hex(0x00FF00) : lv_color_hex(0x666666), 
+                               LV_STATE_DEFAULT);
+    
+    // Update redo button state
+    bool can_redo = command_manager_->canRedo();
+    lv_obj_set_style_bg_color(redo_btn_, 
+                             can_redo ? lv_color_hex(0x444400) : lv_color_hex(0x333333), 
+                             LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(redo_label_, 
+                               can_redo ? lv_color_hex(0xFFFF00) : lv_color_hex(0x666666), 
+                               LV_STATE_DEFAULT);
+    
+    // Update status with undo/redo info
+    if (status_label_) {
+        char status_text[150];
+        snprintf(status_text, sizeof(status_text), 
+                "Undo: %s | Redo: %s", 
+                command_manager_->getUndoDescription().c_str(),
+                command_manager_->getRedoDescription().c_str());
+        lv_label_set_text(status_label_, status_text);
+    }
 }
 
 void SynthApp::loop() {

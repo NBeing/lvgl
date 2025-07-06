@@ -6,6 +6,8 @@
 #include "../MidiDial.h"
 #include "../ParameterControl.h"
 #include "../ParameterBinder.h"
+#include "../CommandManager.h"
+#include "../ButtonControl.h"
 #include "../../hardware/MidiHandler.h"
 
 #if defined(ESP32_BUILD)
@@ -25,6 +27,7 @@ private:
     
     // Parameter system
     std::unique_ptr<ParameterBinder> parameter_binder_;
+    std::unique_ptr<CommandManager> command_manager_;
     
     // UI components - NEW: Parameter-aware controls
     std::shared_ptr<DialControl> cutoff_dial_;
@@ -34,12 +37,21 @@ private:
     std::shared_ptr<DialControl> release_dial_;
     std::shared_ptr<DialControl> lfo_rate_dial_;
     
+    // Button controls for testing
+    std::shared_ptr<ButtonControl> filter_enable_btn_;
+    std::shared_ptr<ButtonControl> lfo_sync_btn_;
+    std::shared_ptr<ButtonControl> trigger_btn_;
+    
     // OLD: Keep original dials for comparison (can be removed later)
     std::unique_ptr<MidiDial> old_cutoff_dial_;
     std::unique_ptr<MidiDial> old_resonance_dial_;
     std::unique_ptr<MidiDial> old_volume_dial_;
     
     lv_obj_t* status_label_;
+    lv_obj_t* undo_btn_;
+    lv_obj_t* redo_btn_;
+    lv_obj_t* undo_label_;
+    lv_obj_t* redo_label_;
     
 public:
     SynthApp();
@@ -49,7 +61,10 @@ public:
     void loop();
     void createUI();
     void createParameterDials();    // NEW: Create parameter-aware dials
+    void createButtonControls();    // NEW: Create button controls
     void createLegacyDials();       // OLD: Original dial creation
+    void createUndoRedoControls();  // NEW: Create undo/redo UI
+    void updateUndoRedoButtons();   // NEW: Update undo/redo button states
     void simulateMidiCC();
     void updateStatus(const char* control, int value);
     

@@ -63,9 +63,11 @@ protected:
     void notifyValueChanged(uint8_t value);
     bool isUpdatingFromParameter() const { return updating_from_parameter_; }
     
-private:
+    // Protected members for subclasses
     std::shared_ptr<Parameter> bound_parameter_;
     ValueChangedCallback value_changed_callback_;
+    
+private:
     bool enabled_;
     bool visible_;
     bool updating_from_parameter_;  // Prevents feedback loops

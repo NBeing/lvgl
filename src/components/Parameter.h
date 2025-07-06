@@ -7,6 +7,7 @@
 
 // Forward declarations
 class ParameterObserver;
+class CommandManager;
 
 enum class ParameterCategory {
     SYSTEM,
@@ -54,8 +55,12 @@ public:
     
     // Value management
     void setValue(uint8_t value);
+    void setValueDirect(uint8_t value);  // Bypasses command system (for undo/redo)
     void resetToDefault();
     bool isAtDefault() const;
+    
+    // Command manager integration
+    void setCommandManager(CommandManager* command_manager) { command_manager_ = command_manager; }
     
     // Value scaling utilities
     float getValueAsPercent() const;
@@ -86,6 +91,7 @@ private:
     std::string description_;
     uint8_t current_value_;
     bool is_bipolar_;
+    CommandManager* command_manager_;  // Injected dependency for undo/redo
     
     std::vector<std::weak_ptr<ParameterObserver>> observers_;
     

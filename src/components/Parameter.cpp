@@ -1,4 +1,6 @@
 #include "Parameter.h"
+#include "CommandManager.h"
+#include "Command.h"
 #include <algorithm>
 #include <cmath>
 
@@ -20,6 +22,7 @@ Parameter::Parameter(const std::string& name,
     , description_(description)
     , current_value_(default_value)
     , is_bipolar_(false)
+    , command_manager_(nullptr)
 {
     // Auto-detect bipolar parameters based on common patterns
     if (name.find("Detune") != std::string::npos || 
@@ -31,6 +34,22 @@ Parameter::Parameter(const std::string& name,
 }
 
 void Parameter::setValue(uint8_t value) {
+    // Clamp to valid range
+    value = std::max(min_value_, std::min(max_value_, value));
+    
+    if (current_value_ != value) {
+        if (command_manager_) {
+            // Create command for undo/redo
+            auto command = std::make_unique<SetParameterCommand>(this, value);
+            command_manager_->executeCommand(std::move(command));
+        } else {
+            // Direct setting if no command manager
+            setValueDirect(value);
+        }
+    }
+}
+
+void Parameter::setValueDirect(uint8_t value) {
     // Clamp to valid range
     value = std::max(min_value_, std::min(max_value_, value));
     
