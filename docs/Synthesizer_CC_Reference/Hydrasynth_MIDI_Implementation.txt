@@ -1,0 +1,152 @@
+ASM Hydrasynth MIDI Implementation Chart
+=============================================
+
+This is the complete official MIDI CC mapping for the ASM Hydrasynth synthesizer, 
+extracted from the official user manual. This includes all controllable parameters
+via MIDI CC messages.
+
+Standard MIDI CCs:
+- CC 00: Bank select MSB
+- CC 01: Modulation wheel
+- CC 07: Master Volume
+- CC 11: Expression pedal
+- CC 32: Bank select LSB
+- CC 64: Sustain pedal
+- CC 123: All notes off
+
+Hydrasynth-specific Parameter Mapping (by CC number):
+----------------------------------------------------
+
+CC 03: Noise Vol (Mixer)
+CC 05: GlidTime (Voice)
+CC 08: Noise Pan (Mixer)
+CC 09: Ring Mod Vol (Mixer)
+CC 10: Ring Mod Pan (Mixer)
+CC 12: PRE-FX Param1 (Pre-fx)
+CC 13: PRE-FX Param2 (Pre-fx)
+CC 14: Delay Feedback (Delay)
+CC 15: Delay Time (Delay)
+CC 16: Macro 1 (Macros)
+CC 17: Macro 2 (Macros)
+CC 18: Macro 3 (Macros)
+CC 19: Macro 4 (Macros)
+CC 20: Macro 5 (Macros)
+CC 21: Macro 6 (Macros)
+CC 22: Macro 7 (Macros)
+CC 23: Macro 8 (Macros)
+CC 24: OSC1 wavscan (OSC 1)
+CC 25: ENV4 Attack (ENV 4)
+CC 26: OSC2 WavScan (OSC 2)
+CC 27: ENV4 Decay (ENV 4)
+CC 28: LFO2 Gain (LFO 2)
+CC 29: Mutator1 Ratio (Mutator 1)
+CC 30: Mutator1 Depth (Mutator 1)
+CC 31: Mutator1 Dry/Wet (Mutator 1)
+CC 33: Mutator2 Ratio (Mutator 2)
+CC 34: Mutator2 Depth (Mutator 2)
+CC 35: Mutator2 Dry/Wet (Mutator 2)
+CC 36: Mutator3 Ratio (Mutator 3)
+CC 37: Mutator3 Depth (Mutator 3)
+CC 39: Mutator3 Dry/Wet (Mutator 3)
+CC 40: Mutator4 Ratio (Mutator 4)
+CC 41: Mutator4 Depth (Mutator 4)
+CC 42: Mutator4 Dry/Wet (Mutator 4)
+CC 43: RM12 Depth (Mixer)
+CC 44: OSC1 Vol (Mixer)
+CC 45: OSC1 Pan (Mixer)
+CC 46: OSC2 Vol (Mixer)
+CC 47: OSC2 Pan (Mixer)
+CC 48: OSC3 Vol (Mixer)
+CC 49: OSC3 Pan (Mixer)
+CC 50: Filter1 Drive (Filter 1)
+CC 51: Filter1 Keytrack (Filter 1)
+CC 52: Filter1 LFO1amt (Filter 1)
+CC 53: Filter1 Vel Env (Filter 1)
+CC 54: Filter1 ENV1amt (Filter 1)
+CC 55: Flt2 Cutoff (Filter 2)
+CC 56: Flt2 Res (Filter 2)
+CC 57: Flt2 Type (Filter 2)
+CC 58: Filter2 Keytrack (Filter 2)
+CC 59: Filter2 LFO1amt (Filter 2)
+CC 60: Filter2 Vel Env (Filter 2)
+CC 61: Filter2 ENV1amt (Filter 2)
+CC 62: Amp LFO2amt (Amp)
+CC 63: Delay Wet tone (Delay)
+CC 65: Reverb Time (Reverb)
+CC 66: Glide (Voice)
+CC 67: Reverb Tone (Reverb)
+CC 68: POST-FX Param1 (Post-fx)
+CC 69: POST-FX Param2 (Post-fx)
+CC 70: LFO1 Gain (LFO 1)
+CC 71: Filter1 Res (Filter 1)
+CC 72: LFO1 Rate (LFO 1)
+CC 73: LFO2 Rate (LFO 2)
+CC 74: Filter1 Cutoff (Filter 1)
+CC 75: LFO3 Gain (LFO 3)
+CC 76: LFO3 Rate (LFO 3)
+CC 77: LFO4 Gain (LFO 4)
+CC 78: LFO4 Rate (LFO 4)
+CC 79: LFO5 Gain (LFO 5)
+CC 80: LFO5 Rate (LFO 5)
+CC 81: ENV1 Attack (ENV 1)
+CC 82: ENV1 Decay (ENV 1)
+CC 83: ENV1 Sustain (ENV 1)
+CC 84: ENV1 Release (ENV 1)
+CC 85: ENV2 Attack (ENV 2)
+CC 86: ENV2 Decay (ENV 2)
+CC 87: ENV2 Sustain (ENV 2)
+CC 88: ENV2 Release (ENV 2)
+CC 89: ENV3 Attack (ENV 3)
+CC 90: ENV3 Decay (ENV 3)
+CC 91: Reverb Dry/Wet (Reverb)
+CC 92: Delay Dry/Wet (Delay)
+CC 93: PRE-FX Mix (Pre-fx)
+CC 94: POST FX Mix (Post-fx)
+CC 95: Detune (Voice)
+CC 96: ENV3 Sustain (ENV 3)
+CC 97: ENV3 Release (ENV 3)
+CC 102: ENV5 Attack (ENV 5)
+CC 103: ENV5 Decay (ENV 5)
+CC 104: ENV5 Sustain (ENV 5)
+CC 105: ENV5 Release (ENV 5)
+CC 106: ARP Division (ARP)
+CC 107: ARP Gate (ARP)
+CC 108: ARP Mode (ARP)
+CC 109: ARP Ratchet (ARP)
+CC 110: ARP Chance (ARP)
+CC 111: OSC1 Cent (OSC 1)
+CC 112: OSC2 Cent (OSC 2)
+CC 113: OSC3 Cent (OSC 3)
+CC 114: OSC3 FRate (Mixer)
+CC 115: Noise FRate (Mixer)
+CC 116: RM12 FRate (Mixer)
+CC 117: StWidth (Voice)
+CC 118: OSC1 FRate (Mixer)
+CC 119: OSC2 FRate (Mixer)
+CC 120: ARP Octave (ARP)
+CC 122: ARP Length (ARP)
+CC 124: ENV4 Release (ENV 4)
+CC 125: ENV4 Sustain (ENV 4)
+
+Parameter Categories:
+--------------------
+- System: Basic MIDI controls (bank select, volume, sustain, etc.)
+- Voice: Global voice parameters (glide, detune, stereo width)
+- Oscillators (OSC 1-3): Wavetable scanning, volume, panning, tuning, frequency rates
+- Mixer: Volume and panning controls for all sound sources
+- Filters (Filter 1-2): Cutoff, resonance, drive, modulation amounts
+- LFOs (LFO 1-5): Rate and gain controls for all 5 LFOs
+- Envelopes (ENV 1-5): ADSR controls for all 5 envelopes
+- Mutators (1-4): Ratio, depth, and dry/wet mix for wave mutators
+- Macros: 8 assignable macro controls
+- Arpeggiator: Division, gate, mode, ratchet, chance, octave, length
+- Effects: Pre-FX, Post-FX, Delay, and Reverb parameters
+- Amp: Amplitude modulation controls
+
+Notes:
+------
+- All CCs use 0-127 range unless otherwise specified
+- Some parameters may have specific value ranges or behaviors
+- Mutators are the Hydrasynth's unique wave manipulation processors
+- The 8 macro controls can be assigned to control multiple parameters simultaneously
+- Effects parameters vary depending on the selected effect type

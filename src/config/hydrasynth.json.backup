@@ -1,0 +1,573 @@
+{
+  "name": "ASM Hydrasynth",
+  "manufacturer": "Ashun Sound Machines",
+  "model": "Hydrasynth Desktop/Keyboard",
+  "version": "1.5.5",
+  "description": "Wavetable synthesizer with analog filters and extensive modulation",
+  "categories": {
+    "oscillator": [
+      {
+        "name": "Osc 1 Pitch",
+        "short_name": "O1 Pitch",
+        "cc_number": 16,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Oscillator 1 pitch adjustment in semitones",
+        "range_description": "-64 to +63 semitones"
+      },
+      {
+        "name": "Osc 1 Fine Tune",
+        "short_name": "O1 Fine",
+        "cc_number": 17,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Oscillator 1 fine pitch adjustment in cents",
+        "range_description": "-64 to +63 cents"
+      },
+      {
+        "name": "Osc 1 Wavetable Position",
+        "short_name": "O1 Wave",
+        "cc_number": 18,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Oscillator 1 wavetable position",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Osc 2 Pitch",
+        "short_name": "O2 Pitch",
+        "cc_number": 19,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Oscillator 2 pitch adjustment in semitones",
+        "range_description": "-64 to +63 semitones"
+      },
+      {
+        "name": "Osc 2 Fine Tune",
+        "short_name": "O2 Fine",
+        "cc_number": 20,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Oscillator 2 fine pitch adjustment in cents",
+        "range_description": "-64 to +63 cents"
+      },
+      {
+        "name": "Osc 2 Wavetable Position",
+        "short_name": "O2 Wave",
+        "cc_number": 21,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Oscillator 2 wavetable position",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Osc 3 Pitch",
+        "short_name": "O3 Pitch",
+        "cc_number": 22,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Oscillator 3 pitch adjustment in semitones",
+        "range_description": "-64 to +63 semitones"
+      },
+      {
+        "name": "Osc 3 Fine Tune",
+        "short_name": "O3 Fine",
+        "cc_number": 23,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Oscillator 3 fine pitch adjustment in cents",
+        "range_description": "-64 to +63 cents"
+      },
+      {
+        "name": "Osc 3 Wavetable Position",
+        "short_name": "O3 Wave",
+        "cc_number": 24,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Oscillator 3 wavetable position",
+        "range_description": "0 to 127"
+      }
+    ],
+    "mixer": [
+      {
+        "name": "Osc 1 Level",
+        "short_name": "O1 Level",
+        "cc_number": 25,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 127,
+        "is_bipolar": false,
+        "description": "Oscillator 1 output level",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Osc 2 Level",
+        "short_name": "O2 Level",
+        "cc_number": 26,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Oscillator 2 output level",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Osc 3 Level",
+        "short_name": "O3 Level",
+        "cc_number": 27,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Oscillator 3 output level",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Ring Mod Level",
+        "short_name": "Ring Mod",
+        "cc_number": 28,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Ring modulation level",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Noise Level",
+        "short_name": "Noise",
+        "cc_number": 29,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Noise generator level",
+        "range_description": "0 to 127"
+      }
+    ],
+    "filter": [
+      {
+        "name": "Filter Cutoff",
+        "short_name": "Cutoff",
+        "cc_number": 74,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 127,
+        "is_bipolar": false,
+        "description": "Filter cutoff frequency",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Filter Resonance",
+        "short_name": "Resonance",
+        "cc_number": 71,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Filter resonance/emphasis",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Filter Drive",
+        "short_name": "Drive",
+        "cc_number": 30,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Filter drive/saturation",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Filter Envelope Amount",
+        "short_name": "Env Amt",
+        "cc_number": 31,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Filter envelope modulation amount",
+        "range_description": "-64 to +63"
+      },
+      {
+        "name": "Filter Velocity",
+        "short_name": "Vel Amt",
+        "cc_number": 32,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Filter velocity sensitivity",
+        "range_description": "-64 to +63"
+      }
+    ],
+    "envelope": [
+      {
+        "name": "Amp Envelope Attack",
+        "short_name": "Amp Att",
+        "cc_number": 73,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Amplifier envelope attack time",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Amp Envelope Decay",
+        "short_name": "Amp Dec",
+        "cc_number": 75,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "Amplifier envelope decay time",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Amp Envelope Sustain",
+        "short_name": "Amp Sus",
+        "cc_number": 79,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 127,
+        "is_bipolar": false,
+        "description": "Amplifier envelope sustain level",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Amp Envelope Release",
+        "short_name": "Amp Rel",
+        "cc_number": 72,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "Amplifier envelope release time",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Filter Envelope Attack",
+        "short_name": "Flt Att",
+        "cc_number": 33,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Filter envelope attack time",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Filter Envelope Decay",
+        "short_name": "Flt Dec",
+        "cc_number": 34,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "Filter envelope decay time",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Filter Envelope Sustain",
+        "short_name": "Flt Sus",
+        "cc_number": 35,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 127,
+        "is_bipolar": false,
+        "description": "Filter envelope sustain level",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Filter Envelope Release",
+        "short_name": "Flt Rel",
+        "cc_number": 36,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "Filter envelope release time",
+        "range_description": "0 to 127"
+      }
+    ],
+    "lfo": [
+      {
+        "name": "LFO 1 Rate",
+        "short_name": "LFO1 Rate",
+        "cc_number": 37,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "LFO 1 frequency/rate",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "LFO 1 Amount",
+        "short_name": "LFO1 Amt",
+        "cc_number": 38,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "LFO 1 modulation amount",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "LFO 2 Rate",
+        "short_name": "LFO2 Rate",
+        "cc_number": 39,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "LFO 2 frequency/rate",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "LFO 2 Amount",
+        "short_name": "LFO2 Amt",
+        "cc_number": 40,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "LFO 2 modulation amount",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "LFO 3 Rate",
+        "short_name": "LFO3 Rate",
+        "cc_number": 41,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "LFO 3 frequency/rate",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "LFO 3 Amount",
+        "short_name": "LFO3 Amt",
+        "cc_number": 42,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "LFO 3 modulation amount",
+        "range_description": "0 to 127"
+      }
+    ],
+    "effects": [
+      {
+        "name": "Delay Time",
+        "short_name": "Delay",
+        "cc_number": 12,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "Delay effect time",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Delay Feedback",
+        "short_name": "Feedback",
+        "cc_number": 13,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 32,
+        "is_bipolar": false,
+        "description": "Delay feedback amount",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Delay Mix",
+        "short_name": "Dly Mix",
+        "cc_number": 14,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Delay wet/dry mix",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Reverb Size",
+        "short_name": "Rev Size",
+        "cc_number": 91,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": false,
+        "description": "Reverb room size",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Reverb Mix",
+        "short_name": "Rev Mix",
+        "cc_number": 93,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Reverb wet/dry mix",
+        "range_description": "0 to 127"
+      }
+    ],
+    "performance": [
+      {
+        "name": "Portamento Time",
+        "short_name": "Portamento",
+        "cc_number": 5,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Portamento/glide time between notes",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Pitchbend Range",
+        "short_name": "PB Range",
+        "cc_number": 44,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 2,
+        "is_bipolar": false,
+        "description": "Pitchbend wheel range in semitones",
+        "range_description": "0 to 127 semitones"
+      },
+      {
+        "name": "Unison Detune",
+        "short_name": "Unison",
+        "cc_number": 45,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Unison voice detuning amount",
+        "range_description": "0 to 127"
+      }
+    ],
+    "modulation": [
+      {
+        "name": "Mod Wheel to Filter",
+        "short_name": "MW→Flt",
+        "cc_number": 46,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Modulation wheel to filter cutoff amount",
+        "range_description": "-64 to +63"
+      },
+      {
+        "name": "Mod Wheel to LFO",
+        "short_name": "MW→LFO",
+        "cc_number": 47,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Modulation wheel to LFO amount",
+        "range_description": "0 to 127"
+      },
+      {
+        "name": "Aftertouch to Filter",
+        "short_name": "AT→Flt",
+        "cc_number": 48,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 64,
+        "is_bipolar": true,
+        "description": "Aftertouch to filter cutoff amount",
+        "range_description": "-64 to +63"
+      },
+      {
+        "name": "Aftertouch to LFO",
+        "short_name": "AT→LFO",
+        "cc_number": 49,
+        "min_value": 0,
+        "max_value": 127,
+        "default_value": 0,
+        "is_bipolar": false,
+        "description": "Aftertouch to LFO amount",
+        "range_description": "0 to 127"
+      }
+    ]
+  },
+  "standard_ccs": [
+    {
+      "name": "Volume",
+      "short_name": "Volume",
+      "cc_number": 7,
+      "min_value": 0,
+      "max_value": 127,
+      "default_value": 100,
+      "is_bipolar": false,
+      "description": "Main volume level",
+      "range_description": "0 to 127"
+    },
+    {
+      "name": "Expression",
+      "short_name": "Expression",
+      "cc_number": 11,
+      "min_value": 0,
+      "max_value": 127,
+      "default_value": 127,
+      "is_bipolar": false,
+      "description": "Expression pedal control",
+      "range_description": "0 to 127"
+    },
+    {
+      "name": "Sustain Pedal",
+      "short_name": "Sustain",
+      "cc_number": 64,
+      "min_value": 0,
+      "max_value": 127,
+      "default_value": 0,
+      "is_bipolar": false,
+      "description": "Sustain pedal on/off",
+      "range_description": "0-63 = Off, 64-127 = On"
+    },
+    {
+      "name": "All Sound Off",
+      "short_name": "Sound Off",
+      "cc_number": 120,
+      "min_value": 0,
+      "max_value": 127,
+      "default_value": 0,
+      "is_bipolar": false,
+      "description": "Emergency all sound off",
+      "range_description": "Any value triggers"
+    }
+  ],
+  "notes": [
+    "CC values are based on Hydrasynth firmware version 1.5.5",
+    "Some parameters may vary between Hydrasynth Desktop and Keyboard models",
+    "Bipolar parameters use 64 as center (0), with 0-63 as negative and 65-127 as positive",
+    "Wavetable positions are specific to the currently loaded wavetable",
+    "LFO sync and waveform selection require additional parameter changes"
+  ]
+}

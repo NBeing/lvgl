@@ -1,0 +1,1003 @@
+{
+  "name": "ASM Hydrasynth",
+  "manufacturer": "Ashun Sound Machines",
+  "description": "8-voice polyphonic wavetable synthesizer with mutators",
+  "categories": {
+    "System": {
+      "description": "Basic MIDI controls and system parameters",
+      "parameters": {
+        "Bank_Select_MSB": {
+          "cc": 0,
+          "name": "Bank Select MSB",
+          "description": "Bank select most significant byte",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Modulation_Wheel": {
+          "cc": 1,
+          "name": "Modulation Wheel",
+          "description": "Standard modulation wheel control",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Master_Volume": {
+          "cc": 7,
+          "name": "Master Volume",
+          "description": "Global volume control",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "Expression_Pedal": {
+          "cc": 11,
+          "name": "Expression Pedal",
+          "description": "Expression pedal control",
+          "min": 0,
+          "max": 127,
+          "default": 127
+        },
+        "Bank_Select_LSB": {
+          "cc": 32,
+          "name": "Bank Select LSB",
+          "description": "Bank select least significant byte",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Sustain_Pedal": {
+          "cc": 64,
+          "name": "Sustain Pedal",
+          "description": "Sustain pedal on/off",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "All_Notes_Off": {
+          "cc": 123,
+          "name": "All Notes Off",
+          "description": "Emergency all notes off",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        }
+      }
+    },
+    "Voice": {
+      "description": "Global voice parameters",
+      "parameters": {
+        "Glide_Time": {
+          "cc": 5,
+          "name": "Glide Time",
+          "description": "Portamento/glide time between notes",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Glide": {
+          "cc": 66,
+          "name": "Glide",
+          "description": "Glide on/off and mode",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Detune": {
+          "cc": 95,
+          "name": "Detune",
+          "description": "Global detuning of voices",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Stereo_Width": {
+          "cc": 117,
+          "name": "Stereo Width",
+          "description": "Stereo field width control",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        }
+      }
+    },
+    "Oscillators": {
+      "description": "3 wavetable oscillators with morphing capabilities",
+      "parameters": {
+        "OSC1_Volume": {
+          "cc": 44,
+          "name": "OSC 1 Volume",
+          "description": "Volume level of oscillator 1",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "OSC1_Pan": {
+          "cc": 45,
+          "name": "OSC 1 Pan",
+          "description": "Stereo panning of oscillator 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "OSC1_Wavscan": {
+          "cc": 24,
+          "name": "OSC 1 Wavscan",
+          "description": "Wavetable scanning position for oscillator 1",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "OSC1_Cent": {
+          "cc": 111,
+          "name": "OSC 1 Cent",
+          "description": "Fine tuning in cents for oscillator 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "OSC1_FRate": {
+          "cc": 118,
+          "name": "OSC 1 FRate",
+          "description": "Frequency rate modulation for oscillator 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "OSC2_Volume": {
+          "cc": 46,
+          "name": "OSC 2 Volume", 
+          "description": "Volume level of oscillator 2",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "OSC2_Pan": {
+          "cc": 47,
+          "name": "OSC 2 Pan",
+          "description": "Stereo panning of oscillator 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "OSC2_Wavscan": {
+          "cc": 26,
+          "name": "OSC 2 Wavscan",
+          "description": "Wavetable scanning position for oscillator 2",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "OSC2_Cent": {
+          "cc": 112,
+          "name": "OSC 2 Cent",
+          "description": "Fine tuning in cents for oscillator 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "OSC2_FRate": {
+          "cc": 119,
+          "name": "OSC 2 FRate",
+          "description": "Frequency rate modulation for oscillator 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "OSC3_Volume": {
+          "cc": 48,
+          "name": "OSC 3 Volume",
+          "description": "Volume level of oscillator 3", 
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "OSC3_Pan": {
+          "cc": 49,
+          "name": "OSC 3 Pan",
+          "description": "Stereo panning of oscillator 3",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "OSC3_Cent": {
+          "cc": 113,
+          "name": "OSC 3 Cent",
+          "description": "Fine tuning in cents for oscillator 3",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "OSC3_FRate": {
+          "cc": 114,
+          "name": "OSC 3 FRate",
+          "description": "Frequency rate modulation for oscillator 3",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        }
+      }
+    },
+    "Mixer": {
+      "description": "Volume and panning controls for all sound sources",
+      "parameters": {
+        "Noise_Volume": {
+          "cc": 3,
+          "name": "Noise Volume",
+          "description": "Volume level of noise generator",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Noise_Pan": {
+          "cc": 8,
+          "name": "Noise Pan",
+          "description": "Stereo panning of noise generator",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Noise_FRate": {
+          "cc": 115,
+          "name": "Noise FRate",
+          "description": "Frequency rate modulation for noise",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Ring_Mod_Volume": {
+          "cc": 9,
+          "name": "Ring Mod Volume",
+          "description": "Volume level of ring modulator",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Ring_Mod_Pan": {
+          "cc": 10,
+          "name": "Ring Mod Pan",
+          "description": "Stereo panning of ring modulator",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "RM12_Depth": {
+          "cc": 43,
+          "name": "RM12 Depth",
+          "description": "Ring modulation depth between OSC1 and OSC2",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "RM12_FRate": {
+          "cc": 116,
+          "name": "RM12 FRate",
+          "description": "Frequency rate modulation for ring modulator",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        }
+      }
+    },
+    "Filters": {
+      "description": "Dual filters with various types and modulation",
+      "parameters": {
+        "Filter1_Cutoff": {
+          "cc": 74,
+          "name": "Filter 1 Cutoff",
+          "description": "Cutoff frequency of filter 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Filter1_Resonance": {
+          "cc": 71,
+          "name": "Filter 1 Resonance",
+          "description": "Resonance amount of filter 1",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Filter1_Drive": {
+          "cc": 50,
+          "name": "Filter 1 Drive",
+          "description": "Drive/saturation amount for filter 1",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Filter1_Keytrack": {
+          "cc": 51,
+          "name": "Filter 1 Keytrack",
+          "description": "Keyboard tracking for filter 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Filter1_LFO1amt": {
+          "cc": 52,
+          "name": "Filter 1 LFO1 Amount",
+          "description": "LFO1 modulation amount for filter 1",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Filter1_Vel_Env": {
+          "cc": 53,
+          "name": "Filter 1 Vel Env",
+          "description": "Velocity envelope amount for filter 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Filter1_ENV1amt": {
+          "cc": 54,
+          "name": "Filter 1 ENV1 Amount",
+          "description": "Envelope 1 modulation amount for filter 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Filter2_Cutoff": {
+          "cc": 55,
+          "name": "Filter 2 Cutoff",
+          "description": "Cutoff frequency of filter 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Filter2_Resonance": {
+          "cc": 56,
+          "name": "Filter 2 Resonance",
+          "description": "Resonance amount of filter 2",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Filter2_Type": {
+          "cc": 57,
+          "name": "Filter 2 Type",
+          "description": "Filter type selection for filter 2",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Filter2_Keytrack": {
+          "cc": 58,
+          "name": "Filter 2 Keytrack",
+          "description": "Keyboard tracking for filter 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Filter2_LFO1amt": {
+          "cc": 59,
+          "name": "Filter 2 LFO1 Amount",
+          "description": "LFO1 modulation amount for filter 2",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Filter2_Vel_Env": {
+          "cc": 60,
+          "name": "Filter 2 Vel Env",
+          "description": "Velocity envelope amount for filter 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Filter2_ENV1amt": {
+          "cc": 61,
+          "name": "Filter 2 ENV1 Amount",
+          "description": "Envelope 1 modulation amount for filter 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        }
+      }
+    },
+    "Envelopes": {
+      "description": "5 ADSR envelopes for modulation",
+      "parameters": {
+        "ENV1_Attack": {
+          "cc": 81,
+          "name": "ENV 1 Attack",
+          "description": "Attack time of envelope 1",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "ENV1_Decay": {
+          "cc": 82,
+          "name": "ENV 1 Decay", 
+          "description": "Decay time of envelope 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "ENV1_Sustain": {
+          "cc": 83,
+          "name": "ENV 1 Sustain",
+          "description": "Sustain level of envelope 1",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "ENV1_Release": {
+          "cc": 84,
+          "name": "ENV 1 Release",
+          "description": "Release time of envelope 1",
+          "min": 0,
+          "max": 127,
+          "default": 32
+        },
+        "ENV2_Attack": {
+          "cc": 85,
+          "name": "ENV 2 Attack",
+          "description": "Attack time of envelope 2",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "ENV2_Decay": {
+          "cc": 86,
+          "name": "ENV 2 Decay", 
+          "description": "Decay time of envelope 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "ENV2_Sustain": {
+          "cc": 87,
+          "name": "ENV 2 Sustain",
+          "description": "Sustain level of envelope 2",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "ENV2_Release": {
+          "cc": 88,
+          "name": "ENV 2 Release",
+          "description": "Release time of envelope 2",
+          "min": 0,
+          "max": 127,
+          "default": 32
+        },
+        "ENV3_Attack": {
+          "cc": 89,
+          "name": "ENV 3 Attack",
+          "description": "Attack time of envelope 3",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "ENV3_Decay": {
+          "cc": 90,
+          "name": "ENV 3 Decay", 
+          "description": "Decay time of envelope 3",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "ENV3_Sustain": {
+          "cc": 96,
+          "name": "ENV 3 Sustain",
+          "description": "Sustain level of envelope 3",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "ENV3_Release": {
+          "cc": 97,
+          "name": "ENV 3 Release",
+          "description": "Release time of envelope 3",
+          "min": 0,
+          "max": 127,
+          "default": 32
+        },
+        "ENV4_Attack": {
+          "cc": 25,
+          "name": "ENV 4 Attack",
+          "description": "Attack time of envelope 4",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "ENV4_Decay": {
+          "cc": 27,
+          "name": "ENV 4 Decay", 
+          "description": "Decay time of envelope 4",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "ENV4_Sustain": {
+          "cc": 125,
+          "name": "ENV 4 Sustain",
+          "description": "Sustain level of envelope 4",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "ENV4_Release": {
+          "cc": 124,
+          "name": "ENV 4 Release",
+          "description": "Release time of envelope 4",
+          "min": 0,
+          "max": 127,
+          "default": 32
+        },
+        "ENV5_Attack": {
+          "cc": 102,
+          "name": "ENV 5 Attack",
+          "description": "Attack time of envelope 5",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "ENV5_Decay": {
+          "cc": 103,
+          "name": "ENV 5 Decay", 
+          "description": "Decay time of envelope 5",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "ENV5_Sustain": {
+          "cc": 104,
+          "name": "ENV 5 Sustain",
+          "description": "Sustain level of envelope 5",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "ENV5_Release": {
+          "cc": 105,
+          "name": "ENV 5 Release",
+          "description": "Release time of envelope 5",
+          "min": 0,
+          "max": 127,
+          "default": 32
+        }
+      }
+    },
+    "LFOs": {
+      "description": "5 Low Frequency Oscillators for modulation",
+      "parameters": {
+        "LFO1_Rate": {
+          "cc": 72,
+          "name": "LFO 1 Rate",
+          "description": "Rate/speed of LFO 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "LFO1_Gain": {
+          "cc": 70,
+          "name": "LFO 1 Gain",
+          "description": "Output level of LFO 1",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "LFO2_Rate": {
+          "cc": 73,
+          "name": "LFO 2 Rate",
+          "description": "Rate/speed of LFO 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "LFO2_Gain": {
+          "cc": 28,
+          "name": "LFO 2 Gain",
+          "description": "Output level of LFO 2",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "LFO3_Rate": {
+          "cc": 76,
+          "name": "LFO 3 Rate",
+          "description": "Rate/speed of LFO 3",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "LFO3_Gain": {
+          "cc": 75,
+          "name": "LFO 3 Gain",
+          "description": "Output level of LFO 3",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "LFO4_Rate": {
+          "cc": 78,
+          "name": "LFO 4 Rate",
+          "description": "Rate/speed of LFO 4",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "LFO4_Gain": {
+          "cc": 77,
+          "name": "LFO 4 Gain",
+          "description": "Output level of LFO 4",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "LFO5_Rate": {
+          "cc": 80,
+          "name": "LFO 5 Rate",
+          "description": "Rate/speed of LFO 5",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "LFO5_Gain": {
+          "cc": 79,
+          "name": "LFO 5 Gain",
+          "description": "Output level of LFO 5",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        }
+      }
+    },
+    "Mutators": {
+      "description": "4 unique wave mutation processors",
+      "parameters": {
+        "Mutator1_Ratio": {
+          "cc": 29,
+          "name": "Mutator 1 Ratio",
+          "description": "Frequency ratio for mutator 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Mutator1_Depth": {
+          "cc": 30,
+          "name": "Mutator 1 Depth",
+          "description": "Processing depth for mutator 1",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Mutator1_Dry_Wet": {
+          "cc": 31,
+          "name": "Mutator 1 Dry/Wet",
+          "description": "Dry/wet mix for mutator 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Mutator2_Ratio": {
+          "cc": 33,
+          "name": "Mutator 2 Ratio",
+          "description": "Frequency ratio for mutator 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Mutator2_Depth": {
+          "cc": 34,
+          "name": "Mutator 2 Depth",
+          "description": "Processing depth for mutator 2",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Mutator2_Dry_Wet": {
+          "cc": 35,
+          "name": "Mutator 2 Dry/Wet",
+          "description": "Dry/wet mix for mutator 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Mutator3_Ratio": {
+          "cc": 36,
+          "name": "Mutator 3 Ratio",
+          "description": "Frequency ratio for mutator 3",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Mutator3_Depth": {
+          "cc": 37,
+          "name": "Mutator 3 Depth",
+          "description": "Processing depth for mutator 3",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Mutator3_Dry_Wet": {
+          "cc": 39,
+          "name": "Mutator 3 Dry/Wet",
+          "description": "Dry/wet mix for mutator 3",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Mutator4_Ratio": {
+          "cc": 40,
+          "name": "Mutator 4 Ratio",
+          "description": "Frequency ratio for mutator 4",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Mutator4_Depth": {
+          "cc": 41,
+          "name": "Mutator 4 Depth",
+          "description": "Processing depth for mutator 4",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Mutator4_Dry_Wet": {
+          "cc": 42,
+          "name": "Mutator 4 Dry/Wet",
+          "description": "Dry/wet mix for mutator 4",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        }
+      }
+    },
+    "Macros": {
+      "description": "8 assignable macro controls",
+      "parameters": {
+        "Macro1": {
+          "cc": 16,
+          "name": "Macro 1",
+          "description": "Assignable macro control 1",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Macro2": {
+          "cc": 17,
+          "name": "Macro 2",
+          "description": "Assignable macro control 2",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Macro3": {
+          "cc": 18,
+          "name": "Macro 3",
+          "description": "Assignable macro control 3",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Macro4": {
+          "cc": 19,
+          "name": "Macro 4",
+          "description": "Assignable macro control 4",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Macro5": {
+          "cc": 20,
+          "name": "Macro 5",
+          "description": "Assignable macro control 5",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Macro6": {
+          "cc": 21,
+          "name": "Macro 6",
+          "description": "Assignable macro control 6",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Macro7": {
+          "cc": 22,
+          "name": "Macro 7",
+          "description": "Assignable macro control 7",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Macro8": {
+          "cc": 23,
+          "name": "Macro 8",
+          "description": "Assignable macro control 8",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        }
+      }
+    },
+    "Arpeggiator": {
+      "description": "Built-in arpeggiator with advanced features",
+      "parameters": {
+        "ARP_Division": {
+          "cc": 106,
+          "name": "ARP Division",
+          "description": "Note division/timing for arpeggiator",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "ARP_Gate": {
+          "cc": 107,
+          "name": "ARP Gate",
+          "description": "Gate length for arpeggiator notes",
+          "min": 0,
+          "max": 127,
+          "default": 100
+        },
+        "ARP_Mode": {
+          "cc": 108,
+          "name": "ARP Mode",
+          "description": "Arpeggiator pattern mode",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "ARP_Ratchet": {
+          "cc": 109,
+          "name": "ARP Ratchet",
+          "description": "Ratcheting/repeat probability",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "ARP_Chance": {
+          "cc": 110,
+          "name": "ARP Chance",
+          "description": "Note trigger probability",
+          "min": 0,
+          "max": 127,
+          "default": 127
+        },
+        "ARP_Octave": {
+          "cc": 120,
+          "name": "ARP Octave",
+          "description": "Octave range for arpeggiator",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "ARP_Length": {
+          "cc": 122,
+          "name": "ARP Length",
+          "description": "Pattern length for arpeggiator",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        }
+      }
+    },
+    "Effects": {
+      "description": "Pre-FX, Post-FX, Delay, and Reverb processors",
+      "parameters": {
+        "Pre_FX_Param1": {
+          "cc": 12,
+          "name": "Pre-FX Param 1",
+          "description": "First parameter for pre-filter effect",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Pre_FX_Param2": {
+          "cc": 13,
+          "name": "Pre-FX Param 2",
+          "description": "Second parameter for pre-filter effect",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Pre_FX_Mix": {
+          "cc": 93,
+          "name": "Pre-FX Mix",
+          "description": "Dry/wet mix for pre-filter effect",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Post_FX_Param1": {
+          "cc": 68,
+          "name": "Post-FX Param 1",
+          "description": "First parameter for post-filter effect",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Post_FX_Param2": {
+          "cc": 69,
+          "name": "Post-FX Param 2",
+          "description": "Second parameter for post-filter effect",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Post_FX_Mix": {
+          "cc": 94,
+          "name": "Post-FX Mix",
+          "description": "Dry/wet mix for post-filter effect",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Delay_Feedback": {
+          "cc": 14,
+          "name": "Delay Feedback",
+          "description": "Feedback amount for delay effect",
+          "min": 0,
+          "max": 127,
+          "default": 32
+        },
+        "Delay_Time": {
+          "cc": 15,
+          "name": "Delay Time",
+          "description": "Delay time setting",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Delay_Wet_Tone": {
+          "cc": 63,
+          "name": "Delay Wet Tone",
+          "description": "Tone control for delayed signal",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Delay_Dry_Wet": {
+          "cc": 92,
+          "name": "Delay Dry/Wet",
+          "description": "Dry/wet mix for delay effect",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        },
+        "Reverb_Time": {
+          "cc": 65,
+          "name": "Reverb Time",
+          "description": "Reverb decay time",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Reverb_Tone": {
+          "cc": 67,
+          "name": "Reverb Tone",
+          "description": "Tone control for reverb",
+          "min": 0,
+          "max": 127,
+          "default": 64
+        },
+        "Reverb_Dry_Wet": {
+          "cc": 91,
+          "name": "Reverb Dry/Wet",
+          "description": "Dry/wet mix for reverb effect",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        }
+      }
+    },
+    "Amp": {
+      "description": "Amplitude and dynamics controls",
+      "parameters": {
+        "Amp_LFO2amt": {
+          "cc": 62,
+          "name": "Amp LFO2 Amount",
+          "description": "LFO2 modulation amount for amplitude",
+          "min": 0,
+          "max": 127,
+          "default": 0
+        }
+      }
+    }
+  }
+}
