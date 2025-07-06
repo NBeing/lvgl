@@ -4,6 +4,8 @@
 #include <memory>
 #include <functional>
 #include "../MidiDial.h"
+#include "../ParameterControl.h"
+#include "../ParameterBinder.h"
 #include "../../hardware/MidiHandler.h"
 
 #if defined(ESP32_BUILD)
@@ -21,10 +23,22 @@ private:
     
     std::unique_ptr<MidiHandler> midi_handler_;
     
-    // UI components
-    std::unique_ptr<MidiDial> cutoff_dial_;
-    std::unique_ptr<MidiDial> resonance_dial_;
-    std::unique_ptr<MidiDial> volume_dial_;
+    // Parameter system
+    std::unique_ptr<ParameterBinder> parameter_binder_;
+    
+    // UI components - NEW: Parameter-aware controls
+    std::shared_ptr<DialControl> cutoff_dial_;
+    std::shared_ptr<DialControl> resonance_dial_;
+    std::shared_ptr<DialControl> volume_dial_;
+    std::shared_ptr<DialControl> attack_dial_;
+    std::shared_ptr<DialControl> release_dial_;
+    std::shared_ptr<DialControl> lfo_rate_dial_;
+    
+    // OLD: Keep original dials for comparison (can be removed later)
+    std::unique_ptr<MidiDial> old_cutoff_dial_;
+    std::unique_ptr<MidiDial> old_resonance_dial_;
+    std::unique_ptr<MidiDial> old_volume_dial_;
+    
     lv_obj_t* status_label_;
     
 public:
@@ -34,6 +48,8 @@ public:
     void setup();
     void loop();
     void createUI();
+    void createParameterDials();    // NEW: Create parameter-aware dials
+    void createLegacyDials();       // OLD: Original dial creation
     void simulateMidiCC();
     void updateStatus(const char* control, int value);
     

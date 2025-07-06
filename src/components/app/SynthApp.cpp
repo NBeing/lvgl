@@ -1,6 +1,8 @@
 // Update SynthApp to use the modular display driver
 #include "SynthApp.h"
 #include "../MidiDial.h"
+#include "../ParameterControl.h"
+#include "../ParameterBinder.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -17,6 +19,7 @@ SynthApp::SynthApp() : initialized_(false) {
     #endif
     
     midi_handler_.reset(new MidiHandler());
+    parameter_binder_.reset(new ParameterBinder());
 }
 
 SynthApp::~SynthApp() {
@@ -25,6 +28,14 @@ SynthApp::~SynthApp() {
 
 void SynthApp::setup() {
     std::cout << "=== LVGL Synth GUI Starting ===" << std::endl;
+    
+    // Load Hydrasynth parameter definitions
+    if (!parameter_binder_->loadSynthDefinition("hydrasynth")) {
+        std::cout << "Failed to load Hydrasynth parameter definitions!" << std::endl;
+    } else {
+        std::cout << "Loaded " << parameter_binder_->getParameterCount() 
+                  << " parameters for " << parameter_binder_->getCurrentSynthName() << std::endl;
+    }
     
     initHardware();
     createUI();
@@ -102,38 +113,28 @@ void SynthApp::createUI() {
     
     // Create title with better styling
     lv_obj_t* title = lv_label_create(lv_screen_active());
-    lv_label_set_text(title, "LVGL Synth GUI - Control_Surface");
+    lv_label_set_text(title, "LVGL Synth GUI - Parameter System");
     lv_obj_set_style_text_color(title, lv_color_hex(0x00FF00), 0);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
     
     // Create help message label
     lv_obj_t* help_label = lv_label_create(lv_screen_active());
-    lv_label_set_text(help_label, "Touch dials to adjust values • MIDI via Control_Surface");
+    lv_label_set_text(help_label, "NEW: Parameter-aware dials (top) • OLD: Legacy dials (bottom)");
     lv_obj_set_style_text_color(help_label, lv_color_hex(0xCCCCCC), 0);
     lv_obj_set_style_text_font(help_label, &lv_font_montserrat_10, 0);
     lv_obj_align(help_label, LV_ALIGN_TOP_MID, 0, 35);
     
-    // Create MIDI dial widgets
-    cutoff_dial_.reset(new MidiDial(lv_screen_active(), "CUTOFF", 80, 80));
-    cutoff_dial_->setColor(lv_color_hex(0x00FF00));  // Green
-    cutoff_dial_->setMidiCC(74);
-    cutoff_dial_->setValue(64);
+    // Create NEW parameter-aware dials
+    createParameterDials();
     
-    resonance_dial_.reset(new MidiDial(lv_screen_active(), "RESONANCE", 200, 80));
-    resonance_dial_->setColor(lv_color_hex(0xFF0000));  // Red
-    resonance_dial_->setMidiCC(71);
-    resonance_dial_->setValue(32);
-    
-    volume_dial_.reset(new MidiDial(lv_screen_active(), "VOLUME", 320, 80));
-    volume_dial_->setColor(lv_color_hex(0x0000FF));  // Blue
-    volume_dial_->setMidiCC(7);
-    volume_dial_->setValue(96);
+    // Create OLD legacy dials for comparison
+    createLegacyDials();
     
     // Create "Simulate MIDI CC" button
     lv_obj_t* sim_button = lv_btn_create(lv_screen_active());
     lv_obj_set_size(sim_button, 200, 40);
-    lv_obj_align(sim_button, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_align(sim_button, LV_ALIGN_BOTTOM_MID, 0, -90);
     
     // Style the button for 8-bit look
     lv_obj_set_style_bg_color(sim_button, lv_color_hex(0x333333), 0);
@@ -143,7 +144,7 @@ void SynthApp::createUI() {
     
     // Button label
     lv_obj_t* btn_label = lv_label_create(sim_button);
-    lv_label_set_text(btn_label, "Simulate MIDI CC");
+    lv_label_set_text(btn_label, "Simulate Values");
     lv_obj_set_style_text_color(btn_label, lv_color_hex(0x00FF00), 0);
     lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_12, 0);
     lv_obj_center(btn_label);
@@ -157,7 +158,7 @@ void SynthApp::createUI() {
     // Create status/info area
     lv_obj_t* status_area = lv_obj_create(lv_screen_active());
     lv_obj_set_size(status_area, 380, 60);
-    lv_obj_align(status_area, LV_ALIGN_BOTTOM_MID, 0, -80);
+    lv_obj_align(status_area, LV_ALIGN_BOTTOM_MID, 0, -20);
     lv_obj_set_style_bg_color(status_area, lv_color_hex(0x1a1a1a), 0);
     lv_obj_set_style_border_color(status_area, lv_color_hex(0x444444), 0);
     lv_obj_set_style_border_width(status_area, 1, 0);
@@ -165,28 +166,137 @@ void SynthApp::createUI() {
     
     // Status label inside the area
     lv_obj_t* status_label = lv_label_create(status_area);
-    lv_label_set_text(status_label, "Ready - Touch dials or button to test MIDI output");
+    lv_label_set_text(status_label, "Ready - Compare NEW vs OLD dial systems");
     lv_obj_set_style_text_color(status_label, lv_color_hex(0xFFFF00), 0);
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_10, 0);
     lv_obj_center(status_label);
     
     // Store status label for updates
     status_label_ = status_label;
+}
+
+void SynthApp::createParameterDials() {
+    std::cout << "Creating NEW parameter-aware dials..." << std::endl;
     
-    // Set up callbacks
-    cutoff_dial_->onValueChanged([this](int value) {
-        handleMidiCC(cutoff_dial_->getMidiCC(), value);
-        updateStatus("CUTOFF", value);
+    // Create parameter-aware dials in a grid
+    const int start_x = 40;
+    const int start_y = 70;
+    const int spacing_x = 120;
+    
+    // Row 1: NEW parameter-aware dials
+    cutoff_dial_ = std::make_shared<DialControl>(lv_screen_active(), start_x, start_y);
+    cutoff_dial_->setColor(lv_color_hex(0x00FF00));  // Green
+    
+    resonance_dial_ = std::make_shared<DialControl>(lv_screen_active(), start_x + spacing_x, start_y);
+    resonance_dial_->setColor(lv_color_hex(0xFF8000));  // Orange
+    
+    volume_dial_ = std::make_shared<DialControl>(lv_screen_active(), start_x + 2*spacing_x, start_y);
+    volume_dial_->setColor(lv_color_hex(0x0080FF));  // Blue
+    
+    attack_dial_ = std::make_shared<DialControl>(lv_screen_active(), start_x, start_y + 100);
+    attack_dial_->setColor(lv_color_hex(0xFF00FF));  // Magenta
+    
+    release_dial_ = std::make_shared<DialControl>(lv_screen_active(), start_x + spacing_x, start_y + 100);
+    release_dial_->setColor(lv_color_hex(0x80FF00));  // Yellow-green
+    
+    lfo_rate_dial_ = std::make_shared<DialControl>(lv_screen_active(), start_x + 2*spacing_x, start_y + 100);
+    lfo_rate_dial_->setColor(lv_color_hex(0xFF0080));  // Pink
+    
+    // Bind parameters to the dials
+    std::vector<std::pair<std::shared_ptr<DialControl>, std::string>> bindings = {
+        {cutoff_dial_, "Filter 1 Cutoff"},
+        {resonance_dial_, "Filter 1 Resonance"},
+        {volume_dial_, "Master Volume"},
+        {attack_dial_, "ENV 1 Attack"},
+        {release_dial_, "ENV 1 Release"},
+        {lfo_rate_dial_, "LFO 1 Rate"}
+    };
+    
+    for (auto& [dial, param_name] : bindings) {
+        auto parameter = parameter_binder_->findParameterByName(param_name);
+        if (parameter) {
+            dial->bindParameter(parameter);
+            
+            // Set up value change callback with MIDI output
+            dial->setValueChangedCallback([this](uint8_t /* value */, const Parameter* param) {
+                // Send MIDI CC using existing MidiHandler
+                if (midi_handler_->isConnected()) {
+                    midi_handler_->sendControlChange(1, param->getCCNumber(), param->getCurrentValue());
+                }
+                
+                // Update status display
+                char status_text[100];
+                snprintf(status_text, sizeof(status_text), 
+                        "NEW: %s = %s (CC%d)", 
+                        param->getShortName().c_str(),
+                        param->getValueDisplayText().c_str(),
+                        static_cast<int>(param->getCCNumber()));
+                if (status_label_) {
+                    lv_label_set_text(status_label_, status_text);
+                }
+                
+                std::cout << "Parameter changed: " << param->getName() 
+                          << " = " << param->getValueDisplayText() 
+                          << " (CC " << static_cast<int>(param->getCCNumber()) << ")" << std::endl;
+            });
+            
+            std::cout << "Bound dial to parameter: " << param_name 
+                      << " (CC " << static_cast<int>(parameter->getCCNumber()) << ")" << std::endl;
+        } else {
+            std::cout << "Parameter not found: " << param_name << std::endl;
+        }
+    }
+}
+
+void SynthApp::createLegacyDials() {
+    std::cout << "Creating OLD legacy dials for comparison..." << std::endl;
+    
+    const int start_x = 40;
+    const int start_y = 220;
+    const int spacing_x = 120;
+    
+    // Create OLD MidiDial widgets for comparison
+    old_cutoff_dial_.reset(new MidiDial(lv_screen_active(), "OLD-CUT", start_x, start_y));
+    old_cutoff_dial_->setColor(lv_color_hex(0x006600));  // Dark Green
+    old_cutoff_dial_->setMidiCC(74);
+    old_cutoff_dial_->setValue(64);
+    
+    old_resonance_dial_.reset(new MidiDial(lv_screen_active(), "OLD-RES", start_x + spacing_x, start_y));
+    old_resonance_dial_->setColor(lv_color_hex(0x664400));  // Dark Orange
+    old_resonance_dial_->setMidiCC(71);
+    old_resonance_dial_->setValue(32);
+    
+    old_volume_dial_.reset(new MidiDial(lv_screen_active(), "OLD-VOL", start_x + 2*spacing_x, start_y));
+    old_volume_dial_->setColor(lv_color_hex(0x004466));  // Dark Blue
+    old_volume_dial_->setMidiCC(7);
+    old_volume_dial_->setValue(96);
+    
+    // Set up callbacks for old dials
+    old_cutoff_dial_->onValueChanged([this](int value) {
+        handleMidiCC(old_cutoff_dial_->getMidiCC(), value);
+        char status_text[100];
+        snprintf(status_text, sizeof(status_text), "OLD: CUTOFF = %d (CC%d)", value, 74);
+        if (status_label_) {
+            lv_label_set_text(status_label_, status_text);
+        }
     });
     
-    resonance_dial_->onValueChanged([this](int value) {
-        handleMidiCC(resonance_dial_->getMidiCC(), value);
-        updateStatus("RESONANCE", value);
+    old_resonance_dial_->onValueChanged([this](int value) {
+        handleMidiCC(old_resonance_dial_->getMidiCC(), value);
+        char status_text[100];
+        snprintf(status_text, sizeof(status_text), "OLD: RESONANCE = %d (CC%d)", value, 71);
+        if (status_label_) {
+            lv_label_set_text(status_label_, status_text);
+        }
     });
     
-    volume_dial_->onValueChanged([this](int value) {
-        handleMidiCC(volume_dial_->getMidiCC(), value);
-        updateStatus("VOLUME", value);
+    old_volume_dial_->onValueChanged([this](int value) {
+        handleMidiCC(old_volume_dial_->getMidiCC(), value);
+        char status_text[100];
+        snprintf(status_text, sizeof(status_text), "OLD: VOLUME = %d (CC%d)", value, 7);
+        if (status_label_) {
+            lv_label_set_text(status_label_, status_text);
+        }
     });
 }
 
@@ -233,15 +343,26 @@ void SynthApp::simulateMidiCC() {
     int values[] = {0, 32, 64, 96, 127};
     int value = values[sim_counter % 5];
     
-    // Update all dials with the simulated value
-    cutoff_dial_->setValue(value);
-    resonance_dial_->setValue(value);
-    volume_dial_->setValue(value);
+    std::cout << "Simulating MIDI CC values set to: " << value << std::endl;
+    
+    // Update NEW parameter-aware dials
+    if (cutoff_dial_ && cutoff_dial_->getBoundParameter()) {
+        cutoff_dial_->getBoundParameter()->setValue(value);
+    }
+    if (resonance_dial_ && resonance_dial_->getBoundParameter()) {
+        resonance_dial_->getBoundParameter()->setValue(value);
+    }
+    if (volume_dial_ && volume_dial_->getBoundParameter()) {
+        volume_dial_->getBoundParameter()->setValue(value);
+    }
+    
+    // Update OLD legacy dials
+    if (old_cutoff_dial_) old_cutoff_dial_->setValue(value);
+    if (old_resonance_dial_) old_resonance_dial_->setValue(value);
+    if (old_volume_dial_) old_volume_dial_->setValue(value);
     
     updateStatus("SIMULATION", value);
     sim_counter++;
-    
-    std::cout << "Simulated MIDI CC values set to: " << value << std::endl;
 }
 
 void SynthApp::updateStatus(const char* control, int value) {
