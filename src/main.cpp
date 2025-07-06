@@ -26,6 +26,7 @@ static bool noteOn = false;
 static uint8_t currentNote = 60;  // Start at middle C
 
 void midiTestLoop() {
+    /*
     unsigned long currentTime;
     
     #if defined(ESP32_BUILD)
@@ -57,6 +58,7 @@ void midiTestLoop() {
         
         lastMidiTime = currentTime;
     }
+    */
 }
 
 #ifdef ESP32_BUILD

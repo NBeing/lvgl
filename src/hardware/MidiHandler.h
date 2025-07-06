@@ -3,11 +3,7 @@
 #if defined(ESP32_BUILD)
     #include <Arduino.h>
     #include <string>
-    #include "USB.h"
-    #include "USBMIDI.h"
-    
-    // Create a global USBMIDI instance
-    extern USBMIDI midi_usb;
+    #include <Control_Surface.h>     // Control-Surface with Arduino Core 3.x support
     
 #else
     #include "RtMidi.h"
@@ -22,7 +18,10 @@ class MidiHandler {
 private:
     bool initialized_;
     
-    #if !defined(ESP32_BUILD)
+    #if defined(ESP32_BUILD)
+        // Move the MIDI interface inside the class as a member variable
+        USBMIDI_Interface midi_interface_;
+    #else
         std::unique_ptr<RtMidiOut> midi_out_;
         unsigned int current_port_;
         std::vector<std::string> available_ports_;
@@ -42,16 +41,14 @@ public:
     
     bool initialize() {
         #if defined(ESP32_BUILD)
-            Serial.println("Initializing Arduino USB MIDI...");
+            Serial.println("Initializing Control-Surface USB MIDI...");
             
-            // Initialize USB first
-            USB.begin();
-            // Initialize MIDI
-            midi_usb.begin();
+            // Initialize the MIDI interface - this is the key!
+            midi_interface_.begin();
             
-            Serial.println("✅ Arduino USB MIDI initialized successfully!");
+            Serial.println("✅ Control-Surface USB MIDI initialized successfully!");
             Serial.println("Device should now appear as USB MIDI device");
-            Serial.println("Check with: lsusb -v -d 303a:8029 | grep -A 5 bInterfaceClass");
+            Serial.println("Check with: lsusb -v -d 303a:1001 | grep -A 5 bInterfaceClass");
             initialized_ = true;
             return true;
         #else
@@ -103,7 +100,7 @@ public:
     
     std::string getConnectionStatus() {
         #if defined(ESP32_BUILD)
-            return initialized_ ? "ESP32 USB MIDI Connected" : "ESP32 USB MIDI Disconnected";
+            return initialized_ ? "Control-Surface USB MIDI Connected" : "Control-Surface USB MIDI Disconnected";
         #else
             return initialized_ ? "Desktop MIDI Connected" : "Desktop MIDI Disconnected";
         #endif
@@ -113,9 +110,9 @@ public:
         if (!initialized_) return;
         
         #if defined(ESP32_BUILD)
-            // Send via Arduino USBMIDI
-            midi_usb.controlChange(cc_number, value, channel);
-            Serial.printf("MIDI CC sent: Ch%d CC%d Val%d\n", channel, cc_number, value);
+            // Use Control-Surface's MIDI sending through the interface
+            midi_interface_.sendControlChange({cc_number, Channel(channel)}, value);
+            Serial.printf("Control-Surface CC: Ch%d CC%d Val%d\n", channel, cc_number, value);
         #else
             // Desktop - Use RtMidi
             if (!midi_out_) return;
@@ -139,8 +136,8 @@ public:
         if (!initialized_) return;
         
         #if defined(ESP32_BUILD)
-            midi_usb.noteOn(note, velocity, channel);
-            Serial.printf("MIDI Note On: Ch%d Note%d Vel%d\n", channel, note, velocity);
+            midi_interface_.sendNoteOn({note, Channel(channel)}, velocity);
+            Serial.printf("Control-Surface Note On: Ch%d Note%d Vel%d\n", channel, note, velocity);
         #else
             if (!midi_out_) return;
             
@@ -162,8 +159,8 @@ public:
         if (!initialized_) return;
         
         #if defined(ESP32_BUILD)
-            midi_usb.noteOff(note, velocity, channel);
-            Serial.printf("MIDI Note Off: Ch%d Note%d\n", channel, note);
+            midi_interface_.sendNoteOff({note, Channel(channel)}, velocity);
+            Serial.printf("Control-Surface Note Off: Ch%d Note%d\n", channel, note);
         #else
             if (!midi_out_) return;
             
@@ -185,7 +182,29 @@ public:
         if (!initialized_) return;
         
         #if defined(ESP32_BUILD)
-            // Arduino USBMIDI doesn't need explicit updates
+            // Update the MIDI interface - this is important for proper operation
+            midi_interface_.update();
         #endif
     }
+    
+    // Advanced Control-Surface features
+    #if defined(ESP32_BUILD)
+    void sendPitchBend(uint8_t channel, int16_t bend) {
+        if (!initialized_) return;
+        midi_interface_.sendPitchBend(Channel(channel), bend);
+        Serial.printf("Control-Surface Pitch Bend: Ch%d Bend%d\n", channel, bend);
+    }
+    
+    void sendProgramChange(uint8_t channel, uint8_t program) {
+        if (!initialized_) return;
+        midi_interface_.sendProgramChange(Channel(channel), program);
+        Serial.printf("Control-Surface Program Change: Ch%d Prog%d\n", channel, program);
+    }
+    
+    void sendAftertouch(uint8_t channel, uint8_t note, uint8_t pressure) {
+        if (!initialized_) return;
+        midi_interface_.sendKeyPressure({note, Channel(channel)}, pressure);
+        Serial.printf("Control-Surface Aftertouch: Ch%d Note%d Press%d\n", channel, note, pressure);
+    }
+    #endif
 };
