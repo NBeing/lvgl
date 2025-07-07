@@ -21,6 +21,12 @@ ButtonControl::ButtonControl(lv_obj_t* parent, int x, int y, int width, int heig
     , default_value_(0)
 {
     createButton(parent, x, y, width, height);
+    // Set initial size/position using setSize/setPosition for consistency
+    setSize(width, height);
+    setPosition(x, y);
+#if SYNTHAPP_DEBUG_UI_CHECKS
+    std::cout << "[ButtonControl] Created at (" << x << ", " << y << ") size (" << width << "x" << height << ")" << std::endl;
+#endif
 }
 
 ButtonControl::~ButtonControl() {
@@ -30,6 +36,8 @@ ButtonControl::~ButtonControl() {
 void ButtonControl::createButton(lv_obj_t* parent, int x, int y, int width, int height) {
     // Create button object
     button_ = lv_btn_create(parent);
+    // Ensure button is clickable (robustness)
+    lv_obj_add_flag(button_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_size(button_, width, height);
     lv_obj_set_pos(button_, x, y);
     
@@ -92,6 +100,9 @@ void ButtonControl::updateFromParameter() {
 void ButtonControl::setPosition(int x, int y) {
     if (button_) {
         lv_obj_set_pos(button_, x, y);
+#if SYNTHAPP_DEBUG_UI_CHECKS
+        std::cout << "[ButtonControl] setPosition(" << x << ", " << y << ")" << std::endl;
+#endif
     }
 }
 
@@ -107,6 +118,9 @@ void ButtonControl::getPosition(int& x, int& y) const {
 void ButtonControl::setSize(int width, int height) {
     if (button_) {
         lv_obj_set_size(button_, width, height);
+#if SYNTHAPP_DEBUG_UI_CHECKS
+        std::cout << "[ButtonControl] setSize(" << width << ", " << height << ")" << std::endl;
+#endif
     }
 }
 
