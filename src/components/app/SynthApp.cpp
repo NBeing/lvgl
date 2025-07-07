@@ -53,6 +53,8 @@ void SynthApp::setup() {
     });
     
     initHardware();
+    // std::cout << "About to create ui!!" << std::endl;
+
     createUI();
     
     initialized_ = true;
@@ -197,8 +199,6 @@ void SynthApp::createUI() {
 
     // Create NEW button controls
     createButtonControls();
-
-    // Legacy dials removed: now fully parameter-aware
 
     // Create undo/redo controls
     createUndoRedoControls();

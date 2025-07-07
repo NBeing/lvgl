@@ -14,9 +14,6 @@
     #include "../../hardware/ESP32Display.h"
 #endif
 
-// Enable this flag to add extra debug/null checks and prints for UI creation
-#define SYNTHAPP_DEBUG_UI_CHECKS 1
-
 class SynthApp {
 private:
     bool initialized_;
@@ -45,7 +42,6 @@ private:
     std::shared_ptr<ButtonControl> lfo_sync_btn_;
     std::shared_ptr<ButtonControl> trigger_btn_;
     
-    // Legacy dials removed: now fully parameter-aware
     
     lv_obj_t* status_label_;
     lv_obj_t* undo_btn_;
@@ -62,12 +58,13 @@ public:
     void createUI();
     void createParameterDials();    // NEW: Create parameter-aware dials
     void createButtonControls();    // NEW: Create button controls
-    // void createLegacyDials();    // Legacy dial creation removed
     void createUndoRedoControls();  // NEW: Create undo/redo UI
-    void createStatusArea();        // NEW: Create status/info area
     void updateUndoRedoButtons();   // NEW: Update undo/redo button states
     void simulateMidiCC();
     void updateStatus(const char* control, int value);
+    void createStatusArea();        // NEW: Create status/info area
+    void handleUndo();              // Undo action
+    void handleRedo();              // Redo action
     
 private:
     void initHardware();
@@ -76,6 +73,4 @@ private:
     void handleMidiCC(int cc_number, int value);
     void platformDelay(int ms);
     unsigned long getPlatformTick();
-    void handleUndo();
-    void handleRedo();
 };

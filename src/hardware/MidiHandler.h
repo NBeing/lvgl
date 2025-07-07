@@ -4,7 +4,8 @@
     #include <Arduino.h>
     #include <string>
     #include <Control_Surface.h>     // Control-Surface with Arduino Core 3.x support
-    
+    #include <iostream>
+
 #else
     #include "RtMidi.h"
     #include <iostream>
@@ -29,6 +30,11 @@ private:
     
 public:
     MidiHandler() : initialized_(false) {
+        #if defined(ESP32_BUILD)
+            std::cout << "MidiHandler constructor called!" << std::endl;
+        #else
+            std::cout << "MidiHandler constructor called!" << std::endl;
+        #endif
         #if !defined(ESP32_BUILD)
             try {
                 midi_out_ = std::make_unique<RtMidiOut>();
@@ -41,14 +47,14 @@ public:
     
     bool initialize() {
         #if defined(ESP32_BUILD)
-            Serial.println("Initializing Control-Surface USB MIDI...");
-            
+            std::cout << "Initializing Control-Surface USB MIDI..." << std::endl;
+
             // Initialize the MIDI interface - this is the key!
             midi_interface_.begin();
             
-            Serial.println("✅ Control-Surface USB MIDI initialized successfully!");
-            Serial.println("Device should now appear as USB MIDI device");
-            Serial.println("Check with: lsusb -v -d 303a:1001 | grep -A 5 bInterfaceClass");
+            std::cout << "✅ Control-Surface USB MIDI initialized successfully!" << std::endl;
+            std::cout << "Device should now appear as USB MIDI device" << std::endl;
+            std::cout << "Check with: lsusb -v -d 303a:1001 | grep -A 5 bInterfaceClass" << std::endl;
             initialized_ = true;
             return true;
         #else
@@ -112,7 +118,7 @@ public:
         #if defined(ESP32_BUILD)
             // Use Control-Surface's MIDI sending through the interface
             midi_interface_.sendControlChange({cc_number, Channel(channel)}, value);
-            Serial.printf("Control-Surface CC: Ch%d CC%d Val%d\n", channel, cc_number, value);
+            // Serial.printf("Control-Surface CC: Ch%d CC%d Val%d\n", channel, cc_number, value);
         #else
             // Desktop - Use RtMidi
             if (!midi_out_) return;
@@ -137,7 +143,7 @@ public:
         
         #if defined(ESP32_BUILD)
             midi_interface_.sendNoteOn({note, Channel(channel)}, velocity);
-            Serial.printf("Control-Surface Note On: Ch%d Note%d Vel%d\n", channel, note, velocity);
+            // Serial.printf("Control-Surface Note On: Ch%d Note%d Vel%d\n", channel, note, velocity);
         #else
             if (!midi_out_) return;
             
@@ -160,7 +166,7 @@ public:
         
         #if defined(ESP32_BUILD)
             midi_interface_.sendNoteOff({note, Channel(channel)}, velocity);
-            Serial.printf("Control-Surface Note Off: Ch%d Note%d\n", channel, note);
+            // Serial.printf("Control-Surface Note Off: Ch%d Note%d\n", channel, note);
         #else
             if (!midi_out_) return;
             
@@ -192,19 +198,19 @@ public:
     void sendPitchBend(uint8_t channel, int16_t bend) {
         if (!initialized_) return;
         midi_interface_.sendPitchBend(Channel(channel), bend);
-        Serial.printf("Control-Surface Pitch Bend: Ch%d Bend%d\n", channel, bend);
+        // Serial.printf("Control-Surface Pitch Bend: Ch%d Bend%d\n", channel, bend);
     }
     
     void sendProgramChange(uint8_t channel, uint8_t program) {
         if (!initialized_) return;
         midi_interface_.sendProgramChange(Channel(channel), program);
-        Serial.printf("Control-Surface Program Change: Ch%d Prog%d\n", channel, program);
+        // Serial.printf("Control-Surface Program Change: Ch%d Prog%d\n", channel, program);
     }
     
     void sendAftertouch(uint8_t channel, uint8_t note, uint8_t pressure) {
         if (!initialized_) return;
         midi_interface_.sendKeyPressure({note, Channel(channel)}, pressure);
-        Serial.printf("Control-Surface Aftertouch: Ch%d Note%d Press%d\n", channel, note, pressure);
+        // Serial.printf("Control-Surface Aftertouch: Ch%d Note%d Press%d\n", channel, note, pressure);
     }
     #endif
 };

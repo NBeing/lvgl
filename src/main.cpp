@@ -64,9 +64,9 @@ void midiTestLoop() {
 #ifdef ESP32_BUILD
 void setup() {
     Serial.begin(115200);
-    delay(1000);  // Short delay for serial
+    delay(5000);  // Short delay for serial
     
-    std::cout << "=== ESP32 SynthApp Starting ===" << std::endl;
+    std::cout << "=== ESP32 SynthApp Starting 2 ===" << std::endl;
     
     // Initialize MIDI test
     if (midi_handler.initialize()) {
@@ -74,12 +74,15 @@ void setup() {
     } else {
         std::cout << "❌ MIDI Test initialization failed!" << std::endl;
     }
+    std::cout << "=== About to set up app ===" << std::endl;
     
     app.setup();
 }
 
 void loop() {
     app.loop();
+
+    std::cout << "=== SynthApp Looping ===" << std::endl;
     
     // Run MIDI test
     midiTestLoop();

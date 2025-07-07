@@ -123,12 +123,6 @@ DialControl::DialControl(lv_obj_t* parent, int x, int y)
 {
     createWidgets(parent, x, y);
     setupStyling();
-    // Set initial size and position using setSize/setPosition for consistency
-    setSize(80, 80); // Default, will be overridden by SynthApp
-    setPosition(x, y);
-#if SYNTHAPP_DEBUG_UI_CHECKS
-    std::cout << "[DialControl] Created at (" << x << ", " << y << ") size (80x80)" << std::endl;
-#endif
     updateLabels();
     updateArcDisplay();
 }
@@ -143,9 +137,8 @@ DialControl::~DialControl() {
 void DialControl::createWidgets(lv_obj_t* parent, int x, int y) {
     // Create main container
     container_ = lv_obj_create(parent);
-    // Ensure container is clickable (robustness)
-    lv_obj_add_flag(container_, LV_OBJ_FLAG_CLICKABLE);
-    // Size/position will be set by setSize/setPosition after construction
+    lv_obj_set_size(container_, 80, 80);
+    lv_obj_set_pos(container_, x, y);
     
     // Register for callbacks
     dial_control_map_[container_] = this;
@@ -205,9 +198,6 @@ void DialControl::setupStyling() {
 void DialControl::setPosition(int x, int y) {
     if (container_) {
         lv_obj_set_pos(container_, x, y);
-#if SYNTHAPP_DEBUG_UI_CHECKS
-        std::cout << "[DialControl] setPosition(" << x << ", " << y << ")" << std::endl;
-#endif
     }
 }
 
@@ -225,12 +215,8 @@ void DialControl::setSize(int width, int height) {
         lv_obj_set_size(container_, width, height);
         // Adjust arc size proportionally
         int arc_size = std::min(width - 20, height - 30);
-        if (arc_size < 10) arc_size = 10;
         lv_obj_set_size(arc_display_, arc_size, arc_size);
         lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, -5);
-#if SYNTHAPP_DEBUG_UI_CHECKS
-        std::cout << "[DialControl] setSize(" << width << ", " << height << ") arc_size=" << arc_size << std::endl;
-#endif
     }
 }
 
