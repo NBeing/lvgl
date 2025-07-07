@@ -1,0 +1,718 @@
+[1mdiff --git a/platformio.ini b/platformio.ini[m
+[1mindex 6948427..d5c1f2e 100644[m
+[1m--- a/platformio.ini[m
+[1m+++ b/platformio.ini[m
+[36m@@ -141,6 +141,7 @@[m [mplatform = https://github.com/pioarduino/platform-espressif32/releases/download/[m
+ platform_packages = [m
+     toolchain-xtensa-esp32s3@8.4.0+2021r2-patch5[m
+ board = esp32-s3-devkitc-1-n16r8v[m
+[32m+[m[32mmonitor_port = /dev/ttyACM1  ; or whichever /dev/ttyACM* matches your Espressif device[m
+ framework = arduino[m
+ monitor_speed = 115200[m
+ monitor_filters = esp32_exception_decoder[m
+[1mdiff --git a/src/components/ButtonControl.cpp b/src/components/ButtonControl.cpp[m
+[1mindex a67581e..b41a316 100644[m
+[1m--- a/src/components/ButtonControl.cpp[m
+[1m+++ b/src/components/ButtonControl.cpp[m
+[36m@@ -21,12 +21,6 @@[m [mButtonControl::ButtonControl(lv_obj_t* parent, int x, int y, int width, int heig[m
+     , default_value_(0)[m
+ {[m
+     createButton(parent, x, y, width, height);[m
+[31m-    // Set initial size/position using setSize/setPosition for consistency[m
+[31m-    setSize(width, height);[m
+[31m-    setPosition(x, y);[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-    std::cout << "[ButtonControl] Created at (" << x << ", " << y << ") size (" << width << "x" << height << ")" << std::endl;[m
+[31m-#endif[m
+ }[m
+ [m
+ ButtonControl::~ButtonControl() {[m
+[36m@@ -36,8 +30,6 @@[m [mButtonControl::~ButtonControl() {[m
+ void ButtonControl::createButton(lv_obj_t* parent, int x, int y, int width, int height) {[m
+     // Create button object[m
+     button_ = lv_btn_create(parent);[m
+[31m-    // Ensure button is clickable (robustness)[m
+[31m-    lv_obj_add_flag(button_, LV_OBJ_FLAG_CLICKABLE);[m
+     lv_obj_set_size(button_, width, height);[m
+     lv_obj_set_pos(button_, x, y);[m
+     [m
+[36m@@ -100,9 +92,6 @@[m [mvoid ButtonControl::updateFromParameter() {[m
+ void ButtonControl::setPosition(int x, int y) {[m
+     if (button_) {[m
+         lv_obj_set_pos(button_, x, y);[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-        std::cout << "[ButtonControl] setPosition(" << x << ", " << y << ")" << std::endl;[m
+[31m-#endif[m
+     }[m
+ }[m
+ [m
+[36m@@ -118,9 +107,6 @@[m [mvoid ButtonControl::getPosition(int& x, int& y) const {[m
+ void ButtonControl::setSize(int width, int height) {[m
+     if (button_) {[m
+         lv_obj_set_size(button_, width, height);[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-        std::cout << "[ButtonControl] setSize(" << width << ", " << height << ")" << std::endl;[m
+[31m-#endif[m
+     }[m
+ }[m
+ [m
+[1mdiff --git a/src/components/LayoutManager.cpp b/src/components/LayoutManager.cpp[m
+[1mindex f8c84f4..566aad3 100644[m
+[1m--- a/src/components/LayoutManager.cpp[m
+[1m+++ b/src/components/LayoutManager.cpp[m
+[36m@@ -1,81 +1,69 @@[m
+ #include "LayoutManager.h"[m
+ #include <algorithm>[m
+[31m-#include <iostream>[m
+[32m+[m[32m#include <cstdio>[m
+ [m
+[31m-// Static member initialization[m
+ LayoutManager::ScreenSize LayoutManager::screen_size_ = ScreenSize::MEDIUM;[m
+ LayoutManager::LayoutConfig LayoutManager::current_config_ = {};[m
+ bool LayoutManager::initialized_ = false;[m
+ [m
+ void LayoutManager::initialize() {[m
+     if (initialized_) return;[m
+[31m-    [m
+[31m-    // Get actual screen dimensions[m
+[32m+[m
+     int screen_width = lv_display_get_horizontal_resolution(lv_display_get_default());[m
+     int screen_height = lv_display_get_vertical_resolution(lv_display_get_default());[m
+[31m-    [m
+[32m+[m
+     screen_size_ = classifyScreen(screen_width, screen_height);[m
+     current_config_ = createConfigForScreen(screen_size_);[m
+[31m-    // Dynamically adjust dial_spacing_x and margin_x for small screens[m
+[31m-    if (screen_size_ == ScreenSize::SMALL) {[m
+[31m-        int grid_cols = current_config_.grid_cols;[m
+[31m-        int dial_size = current_config_.dial_size + 20; // match SynthApp dial container size[m
+[31m-        int total_dial_width = grid_cols * dial_size;[m
+[31m-        int available_width = screen_width - 2 * current_config_.margin_x;[m
+[31m-        int spacing = 0;[m
+[31m-        if (grid_cols > 1) {[m
+[31m-            spacing = (available_width - total_dial_width) / (grid_cols - 1);[m
+[31m-            if (spacing < 10) spacing = 10;[m
+[31m-        }[m
+[31m-        int used_width = grid_cols * dial_size + (grid_cols - 1) * spacing;[m
+[31m-        int margin_x = (screen_width - used_width) / 2;[m
+[31m-        if (margin_x < 0) margin_x = 0;[m
+[31m-        current_config_.dial_spacing_x = dial_size + spacing;[m
+[31m-        current_config_.margin_x = margin_x;[m
+[31m-        std::cout << "[LayoutManager] SMALL: dial_size=" << dial_size << ", spacing=" << spacing << ", margin_x=" << margin_x << std::endl;[m
+[31m-    }[m
+     initialized_ = true;[m
+ [m
+[31m-    std::cout << "LayoutManager: Screen " << screen_width << "x" << screen_height [m
+[31m-              << " classified as " << ((screen_size_ == ScreenSize::SMALL) ? "SMALL" :[m
+[31m-                                      (screen_size_ == ScreenSize::MEDIUM) ? "MEDIUM" : "LARGE")[m
+[31m-              << std::endl;[m
+[32m+[m[32m#if defined(SYNTHAPP_DEBUG_UI_CHECKS)[m
+[32m+[m[32m    printf("LayoutManager: Screen %dx%d classified as %s\n",[m
+[32m+[m[32m           screen_width, screen_height,[m
+[32m+[m[32m           (screen_size_ == ScreenSize::SMALL) ? "SMALL" :[m
+[32m+[m[32m           (screen_size_ == ScreenSize::MEDIUM) ? "MEDIUM" : "LARGE");[m
+[32m+[m[32m#endif[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mconst LayoutManager::LayoutConfig& LayoutManager::getConfig() {[m
+[32m+[m[32m    if (!initialized_) initialize();[m
+[32m+[m[32m    return current_config_;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mLayoutManager::ScreenSize LayoutManager::getScreenSize() {[m
+[32m+[m[32m    if (!initialized_) initialize();[m
+[32m+[m[32m    return screen_size_;[m
+ }[m
+ [m
+ LayoutManager::ScreenSize LayoutManager::classifyScreen(int width, int height) {[m
+[31m-    // Classify based on smaller dimension to handle both orientations[m
+     int min_dim = std::min(width, height);[m
+[31m-    [m
+     if (min_dim <= 320) {[m
+[31m-        return ScreenSize::SMALL;   // ESP32 displays[m
+[32m+[m[32m        return ScreenSize::SMALL;[m
+     } else if (min_dim <= 600) {[m
+[31m-        return ScreenSize::MEDIUM;  // Tablet-like[m
+[32m+[m[32m        return ScreenSize::MEDIUM;[m
+     } else {[m
+[31m-        return ScreenSize::LARGE;   // Desktop[m
+[32m+[m[32m        return ScreenSize::LARGE;[m
+     }[m
+ }[m
+ [m
+ LayoutManager::LayoutConfig LayoutManager::createConfigForScreen(ScreenSize size) {[m
+     LayoutConfig config = {};[m
+[31m-    [m
+     switch (size) {[m
+[31m-        case ScreenSize::SMALL:  // ESP32 displays (320x240, 480x320)[m
+[31m-            config.dial_size = 45;           // Smaller dials[m
+[31m-            config.dial_spacing_x = 90;      // Wider spacing to fill screen[m
+[31m-            config.dial_spacing_y = 70;      // More vertical space[m
+[31m-            config.button_width = 60;        // Slightly wider buttons[m
+[32m+[m[32m        case ScreenSize::SMALL:[m
+[32m+[m[32m            config.dial_size = 45;[m
+[32m+[m[32m            config.dial_spacing_x = 90; // Dynamically fills width for 3 columns[m
+[32m+[m[32m            config.dial_spacing_y = 65;[m
+[32m+[m[32m            config.button_width = 60;[m
+             config.button_height = 28;[m
+[31m-            config.button_spacing = 32;[m
+[31m-            config.margin_x = 18;            // More margin for centering[m
+[32m+[m[32m            config.button_spacing = 38;[m
+[32m+[m[32m            config.margin_x = 10;[m
+             config.margin_y = 10;[m
+[31m-            config.grid_cols = 3;            // 3 columns to match dials[m
+[31m-            config.status_height = 20;       // Compact status[m
+[32m+[m[32m            config.grid_cols = 3;[m
+[32m+[m[32m            config.status_height = 18;[m
+             config.title_font_size = 12;[m
+             config.label_font_size = 10;[m
+             config.value_font_size = 8;[m
+             break;[m
+[31m-            [m
+[31m-        case ScreenSize::MEDIUM:  // Tablet size[m
+[32m+[m[32m        case ScreenSize::MEDIUM:[m
+             config.dial_size = 60;[m
+             config.dial_spacing_x = 80;[m
+             config.dial_spacing_y = 90;[m
+[36m@@ -90,9 +78,8 @@[m [mLayoutManager::LayoutConfig LayoutManager::createConfigForScreen(ScreenSize size[m
+             config.label_font_size = 12;[m
+             config.value_font_size = 10;[m
+             break;[m
+[31m-            [m
+[31m-        case ScreenSize::LARGE:   // Desktop[m
+[31m-            config.dial_size = 80;           // Current sizes[m
+[32m+[m[32m        case ScreenSize::LARGE:[m
+[32m+[m[32m            config.dial_size = 80;[m
+             config.dial_spacing_x = 120;[m
+             config.dial_spacing_y = 120;[m
+             config.button_width = 80;[m
+[36m@@ -107,20 +94,20 @@[m [mLayoutManager::LayoutConfig LayoutManager::createConfigForScreen(ScreenSize size[m
+             config.value_font_size = 12;[m
+             break;[m
+     }[m
+[31m-    [m
+     return config;[m
+ }[m
+ [m
+ void LayoutManager::getGridPosition(int grid_x, int grid_y, int* out_x, int* out_y) {[m
+[31m-    *out_x = current_config_.margin_x + grid_x * current_config_.dial_spacing_x;[m
+[31m-    *out_y = current_config_.margin_y + grid_y * current_config_.dial_spacing_y;[m
+[32m+[m[32m    const auto& cfg = getConfig();[m
+[32m+[m[32m    *out_x = cfg.margin_x + grid_x * cfg.dial_spacing_x;[m
+[32m+[m[32m    *out_y = cfg.margin_y + grid_y * cfg.dial_spacing_y;[m
+ }[m
+ [m
+ int LayoutManager::scaleSize(int base_size) {[m
+[31m-    switch (screen_size_) {[m
+[31m-        case ScreenSize::SMALL:  return static_cast<int>(base_size * 0.6);  // 60% of base[m
+[31m-        case ScreenSize::MEDIUM: return static_cast<int>(base_size * 0.8);  // 80% of base[m
+[31m-        case ScreenSize::LARGE:  return base_size;        // 100% of base[m
+[32m+[m[32m    switch (getScreenSize()) {[m
+[32m+[m[32m        case ScreenSize::SMALL:  return base_size * 0.6;[m
+[32m+[m[32m        case ScreenSize::MEDIUM: return base_size * 0.8;[m
+[32m+[m[32m        case ScreenSize::LARGE:  return base_size;[m
+     }[m
+     return base_size;[m
+ }[m
+[36m@@ -128,7 +115,7 @@[m [mint LayoutManager::scaleSize(int base_size) {[m
+ void LayoutManager::getContentArea(int* width, int* height) {[m
+     int screen_width = lv_display_get_horizontal_resolution(lv_display_get_default());[m
+     int screen_height = lv_display_get_vertical_resolution(lv_display_get_default());[m
+[31m-    [m
+[31m-    *width = screen_width - (2 * current_config_.margin_x);[m
+[31m-    *height = screen_height - (2 * current_config_.margin_y) - current_config_.status_height;[m
+[31m-}[m
+[32m+[m[32m    const auto& cfg = getConfig();[m
+[32m+[m[32m    *width = screen_width - (2 * cfg.margin_x);[m
+[32m+[m[32m    *height = screen_height - (2 * cfg.margin_y) - cfg.status_height;[m
+[32m+[m[32m}[m
+\ No newline at end of file[m
+[1mdiff --git a/src/components/LayoutManager.h b/src/components/LayoutManager.h[m
+[1mindex 81c55af..9c31124 100644[m
+[1m--- a/src/components/LayoutManager.h[m
+[1m+++ b/src/components/LayoutManager.h[m
+[36m@@ -2,77 +2,52 @@[m
+ [m
+ #include "lvgl.h"[m
+ [m
+[31m-/**[m
+[31m- * @brief Responsive layout management for different screen sizes[m
+[31m- */[m
+ class LayoutManager {[m
+ public:[m
+     enum class ScreenSize {[m
+[31m-        SMALL,   // ESP32 displays (320x240, 480x320)[m
+[31m-        MEDIUM,  // Tablet size (800x480)[m
+[31m-        LARGE    // Desktop (1024x768+)[m
+[32m+[m[32m        SMALL,   // ESP32 displays (e.g., 320x240, 480x320)[m
+[32m+[m[32m        MEDIUM,  // Tablet size (e.g., 800x480)[m
+[32m+[m[32m        LARGE    // Desktop (e.g., 1024x768+)[m
+     };[m
+[31m-    [m
+[32m+[m
+     struct LayoutConfig {[m
+         // Dial configuration[m
+         int dial_size;[m
+         int dial_spacing_x;[m
+         int dial_spacing_y;[m
+[31m-        [m
+[32m+[m
+         // Button configuration[m
+         int button_width;[m
+         int button_height;[m
+         int button_spacing;[m
+[31m-        [m
+[32m+[m
+         // General layout[m
+         int margin_x;[m
+         int margin_y;[m
+         int grid_cols;[m
+         int status_height;[m
+[31m-        [m
+[32m+[m
+         // Font sizes[m
+         int title_font_size;[m
+         int label_font_size;[m
+         int value_font_size;[m
+     };[m
+[31m-    [m
+[32m+[m
+ private:[m
+     static ScreenSize screen_size_;[m
+     static LayoutConfig current_config_;[m
+     static bool initialized_;[m
+[31m-    [m
+[32m+[m
+ public:[m
+[31m-    /**[m
+[31m-     * Initialize layout manager with current screen dimensions[m
+[31m-     */[m
+     static void initialize();[m
+[31m-    [m
+[31m-    /**[m
+[31m-     * Get current layout configuration[m
+[31m-     */[m
+[31m-    static const LayoutConfig& getConfig() { return current_config_; }[m
+[31m-    [m
+[31m-    /**[m
+[31m-     * Get screen size classification[m
+[31m-     */[m
+[31m-    static ScreenSize getScreenSize() { return screen_size_; }[m
+[31m-    [m
+[31m-    /**[m
+[31m-     * Calculate grid position for element[m
+[31m-     */[m
+[32m+[m[32m    static const LayoutConfig& getConfig();[m
+[32m+[m[32m    static ScreenSize getScreenSize();[m
+[32m+[m
+     static void getGridPosition(int grid_x, int grid_y, int* out_x, int* out_y);[m
+[31m-    [m
+[31m-    /**[m
+[31m-     * Get scaled size based on screen[m
+[31m-     */[m
+     static int scaleSize(int base_size);[m
+[31m-    [m
+[31m-    /**[m
+[31m-     * Get available content area (excluding margins)[m
+[31m-     */[m
+     static void getContentArea(int* width, int* height);[m
+[31m-    [m
+[32m+[m
+ private:[m
+     static ScreenSize classifyScreen(int width, int height);[m
+     static LayoutConfig createConfigForScreen(ScreenSize size);[m
+[31m-};[m
+[32m+[m[32m};[m
+\ No newline at end of file[m
+[1mdiff --git a/src/components/ParameterControl.cpp b/src/components/ParameterControl.cpp[m
+[1mindex 7cbbf0d..13f8af3 100644[m
+[1m--- a/src/components/ParameterControl.cpp[m
+[1m+++ b/src/components/ParameterControl.cpp[m
+[36m@@ -123,12 +123,6 @@[m [mDialControl::DialControl(lv_obj_t* parent, int x, int y)[m
+ {[m
+     createWidgets(parent, x, y);[m
+     setupStyling();[m
+[31m-    // Set initial size and position using setSize/setPosition for consistency[m
+[31m-    setSize(80, 80); // Default, will be overridden by SynthApp[m
+[31m-    setPosition(x, y);[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-    std::cout << "[DialControl] Created at (" << x << ", " << y << ") size (80x80)" << std::endl;[m
+[31m-#endif[m
+     updateLabels();[m
+     updateArcDisplay();[m
+ }[m
+[36m@@ -143,9 +137,8 @@[m [mDialControl::~DialControl() {[m
+ void DialControl::createWidgets(lv_obj_t* parent, int x, int y) {[m
+     // Create main container[m
+     container_ = lv_obj_create(parent);[m
+[31m-    // Ensure container is clickable (robustness)[m
+[31m-    lv_obj_add_flag(container_, LV_OBJ_FLAG_CLICKABLE);[m
+[31m-    // Size/position will be set by setSize/setPosition after construction[m
+[32m+[m[32m    lv_obj_set_size(container_, 80, 80);[m
+[32m+[m[32m    lv_obj_set_pos(container_, x, y);[m
+     [m
+     // Register for callbacks[m
+     dial_control_map_[container_] = this;[m
+[36m@@ -205,9 +198,6 @@[m [mvoid DialControl::setupStyling() {[m
+ void DialControl::setPosition(int x, int y) {[m
+     if (container_) {[m
+         lv_obj_set_pos(container_, x, y);[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-        std::cout << "[DialControl] setPosition(" << x << ", " << y << ")" << std::endl;[m
+[31m-#endif[m
+     }[m
+ }[m
+ [m
+[36m@@ -225,12 +215,8 @@[m [mvoid DialControl::setSize(int width, int height) {[m
+         lv_obj_set_size(container_, width, height);[m
+         // Adjust arc size proportionally[m
+         int arc_size = std::min(width - 20, height - 30);[m
+[31m-        if (arc_size < 10) arc_size = 10;[m
+         lv_obj_set_size(arc_display_, arc_size, arc_size);[m
+         lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, -5);[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-        std::cout << "[DialControl] setSize(" << width << ", " << height << ") arc_size=" << arc_size << std::endl;[m
+[31m-#endif[m
+     }[m
+ }[m
+ [m
+[1mdiff --git a/src/components/app/SynthApp.cpp b/src/components/app/SynthApp.cpp[m
+[1mindex 04a67bc..a2ad34c 100644[m
+[1m--- a/src/components/app/SynthApp.cpp[m
+[1m+++ b/src/components/app/SynthApp.cpp[m
+[36m@@ -33,27 +33,29 @@[m [mSynthApp::~SynthApp() {[m
+ void SynthApp::setup() {[m
+     std::cout << "=== LVGL Synth GUI Starting ===" << std::endl;[m
+     [m
+[31m-    // Load Hydrasynth parameter definitions[m
+[31m-    if (!parameter_binder_->loadSynthDefinition("hydrasynth")) {[m
+[31m-        std::cout << "Failed to load Hydrasynth parameter definitions!" << std::endl;[m
+[31m-    } else {[m
+[31m-        std::cout << "Loaded " << parameter_binder_->getParameterCount() [m
+[31m-                  << " parameters for " << parameter_binder_->getCurrentSynthName() << std::endl;[m
+[31m-    }[m
+[32m+[m[32m    // // Load Hydrasynth parameter definitions[m
+[32m+[m[32m    // if (!parameter_binder_->loadSynthDefinition("hydrasynth")) {[m
+[32m+[m[32m    //     std::cout << "Failed to load Hydrasynth parameter definitions!" << std::endl;[m
+[32m+[m[32m    // } else {[m
+[32m+[m[32m    //     std::cout << "Loaded " << parameter_binder_->getParameterCount()[m[41m [m
+[32m+[m[32m    //               << " parameters for " << parameter_binder_->getCurrentSynthName() << std::endl;[m
+[32m+[m[32m    // }[m
+     [m
+[31m-    // Inject command manager into all parameters[m
+[31m-    auto all_params = parameter_binder_->getAllParameters();[m
+[31m-    for (auto param : all_params) {[m
+[31m-        param->setCommandManager(command_manager_.get());[m
+[31m-    }[m
+[32m+[m[32m    // // Inject command manager into all parameters[m
+[32m+[m[32m    // auto all_params = parameter_binder_->getAllParameters();[m
+[32m+[m[32m    // for (auto param : all_params) {[m
+[32m+[m[32m    //     param->setCommandManager(command_manager_.get());[m
+[32m+[m[32m    // }[m
+     [m
+[31m-    // Set up history change callback to update UI[m
+[31m-    command_manager_->setHistoryChangedCallback([this]() {[m
+[31m-        updateUndoRedoButtons();[m
+[31m-    });[m
+[32m+[m[32m    // // Set up history change callback to update UI[m
+[32m+[m[32m    // command_manager_->setHistoryChangedCallback([this]() {[m
+[32m+[m[32m    //     updateUndoRedoButtons();[m
+[32m+[m[32m    // });[m
+     [m
+[31m-    initHardware();[m
+[31m-    createUI();[m
+[32m+[m[32m    // initHardware();[m
+[32m+[m[32m    // std::cout << "About to create ui!!" << std::endl;[m
+[32m+[m
+[32m+[m[32m    // createUI();[m
+     [m
+     initialized_ = true;[m
+     std::cout << "Synth GUI initialized successfully!" << std::endl;[m
+[36m@@ -130,78 +132,32 @@[m [mvoid SynthApp::initDesktop() {[m
+ }[m
+ [m
+ void SynthApp::createUI() {[m
+[31m-    // Initialize the layout manager first[m
+[31m-    LayoutManager::initialize();[m
+[31m-    const auto& config = LayoutManager::getConfig();[m
+[31m-    std::cout << "Using layout config: dial_size=" << config.dial_size [m
+[31m-              << ", spacing=" << config.dial_spacing_x << "x" << config.dial_spacing_y[m
+[31m-              << ", margins=" << config.margin_x << "x" << config.margin_y << std::endl;[m
+[31m-[m
+[31m-    // Set dark background for 8-bit retro feel[m
+[32m+[m[32m    // MINIMAL UI: Only a single dial, no layout manager, no buttons, no status, no background debug, no title[m
+     lv_obj_t* screen = lv_screen_active();[m
+[31m-    if (!screen) {[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-        std::cerr << "[UI-ERR] lv_screen_active() returned nullptr!" << std::endl;[m
+[31m-#endif[m
+[31m-        return;[m
+[31m-    }[m
+[31m-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x0a0a0a), 0);[m
+[31m-    // Add a transparent background object to catch and debug touch events[m
+[31m-    lv_obj_t* debug_bg = lv_obj_create(screen);[m
+[31m-    lv_obj_set_size(debug_bg, lv_obj_get_width(screen), lv_obj_get_height(screen));[m
+[31m-    lv_obj_set_style_bg_opa(debug_bg, LV_OPA_TRANSP, 0);[m
+[31m-    lv_obj_clear_flag(debug_bg, LV_OBJ_FLAG_CLICKABLE); // Don't block events[m
+[31m-    lv_obj_move_background(debug_bg);[m
+[31m-    lv_obj_add_event_cb(debug_bg, [](lv_event_t* e) {[m
+[31m-        lv_point_t p;[m
+[31m-        lv_indev_get_point(lv_indev_get_act(), &p);[m
+[31m-        std::cout << "[DEBUG] Touch event at (" << p.x << ", " << p.y << ") code=" << lv_event_get_code(e) << std::endl;[m
+[31m-    }, LV_EVENT_ALL, NULL);[m
+[31m-[m
+[31m-    // Create title with responsive positioning and font[m
+[31m-    lv_obj_t* title = lv_label_create(screen);[m
+[31m-    if (!title) {[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-        std::cerr << "[UI-ERR] Failed to create title label!" << std::endl;[m
+[31m-#endif[m
+[31m-        return;[m
+[31m-    }[m
+[31m-    lv_label_set_text(title, "LVGL Synth GUI - Parameter System");[m
+[31m-    lv_obj_set_style_text_color(title, lv_color_hex(0x00FF00), 0);[m
+[31m-[m
+[31m-    // Use appropriate font based on screen size[m
+[31m-    if (LayoutManager::getScreenSize() == LayoutManager::ScreenSize::SMALL) {[m
+[31m-        lv_obj_set_style_text_font(title, &lv_font_montserrat_12, 0);[m
+[31m-    } else {[m
+[31m-        lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);[m
+[31m-    }[m
+[31m-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, config.margin_y / 2);[m
+[31m-[m
+[31m-    // Create help message label (only on larger screens)[m
+[31m-    if (LayoutManager::getScreenSize() != LayoutManager::ScreenSize::SMALL) {[m
+[31m-        lv_obj_t* help_label = lv_label_create(screen);[m
+[31m-        if (!help_label) {[m
+[31m-#if SYNTHAPP_DEBUG_UI_CHECKS[m
+[31m-            std::cerr << "[UI-ERR] Failed to create help label!" << std::endl;[m
+[31m-#endif[m
+[31m-        } else {[m
+[31m-            lv_label_set_text(help_label, "NEW: Parameter-aware dials (top) • OLD: Legacy dials (bottom)");[m
+[31m-            lv_obj_set_style_text_color(help_label, lv_color_hex(0xCCCCCC), 0);[m
+[31m-            lv_obj_set_style_text_font(help_label, &lv_font_montserrat_10, 0);[m
+[31m-            lv_obj_align(help_label, LV_ALIGN_TOP_MID, 0, config.margin_y / 2 + 25);[m
+[32m+[m[41m    [m
+[32m+[m[32m    if (!screen) return;[m
+[32m+[m[32m    std::cout << "Screen active!" << std::endl;[m
+[32m+[m[32m    // Just create a single dial at a fixed position[m
+[32m+[m[32m    cutoff_dial_ = std::make_shared<DialControl>(screen, 60, 60);[m
+[32m+[m[32m    if (cutoff_dial_) {[m
+[32m+[m[32m        cutoff_dial_->setColor(lv_color_hex(0x00FF00));[m
+[32m+[m[32m        cutoff_dial_->setDialSize(80);[m
+[32m+[m[32m        cutoff_dial_->setSize(100, 110);[m
+[32m+[m[32m        cutoff_dial_->setPosition(60, 60);[m
+[32m+[m[32m        // Try to bind to a parameter if available[m
+[32m+[m[32m        auto parameter = parameter_binder_->findParameterByName("Filter 1 Cutoff");[m
+[32m+[m[32m        if (parameter) {[m
+[32m+[m[32m            cutoff_dial_->bindParameter(parameter);[m
+[32m+[m[32m            cutoff_dial_->setValueChangedCallback([this](uint8_t /* value */, const Parameter* param) {[m
+[32m+[m[32m                if (midi_handler_->isConnected()) {[m
+[32m+[m[32m                    midi_handler_->sendControlChange(1, param->getCCNumber(), param->getCurrentValue());[m
+[32m+[m[32m                }[m
+[32m+[m[32m                std::cout << "Parameter changed: " << param->getName()[m[41m [m
+[32m+[m[32m                          << " = " << param->getValueDisplayText()[m[41m [m
+[32m+[m[32m                          << " (CC " << static_cast<int>(param->getCCNumber()) << ")" << std::endl;[m
+[32m+[m[32m            });[m
+         }[m
+     }[m
+[31m-[m
+[31m-    // Create NEW parameter-aware dials[m
+[31m-    createParameterDials();[m
+[31m-[m
+[31m-    // Create NEW button controls[m
+[31m-    createButtonControls();[m
+[31m-[m
+[31m-    // Legacy dials removed: now fully parameter-aware[m
+[31m-[m
+[31m-    // Create undo/redo controls[m
+[31m-    createUndoRedoControls();[m
+ }[m
+ [m
+ void SynthApp::createParameterDials() {[m
+[1mdiff --git a/src/components/app/SynthApp.h b/src/components/app/SynthApp.h[m
+[1mindex 316b126..5665b4b 100644[m
+[1m--- a/src/components/app/SynthApp.h[m
+[1m+++ b/src/components/app/SynthApp.h[m
+[36m@@ -14,9 +14,6 @@[m
+     #include "../../hardware/ESP32Display.h"[m
+ #endif[m
+ [m
+[31m-// Enable this flag to add extra debug/null checks and prints for UI creation[m
+[31m-#define SYNTHAPP_DEBUG_UI_CHECKS 1[m
+[31m-[m
+ class SynthApp {[m
+ private:[m
+     bool initialized_;[m
+[36m@@ -45,7 +42,6 @@[m [mprivate:[m
+     std::shared_ptr<ButtonControl> lfo_sync_btn_;[m
+     std::shared_ptr<ButtonControl> trigger_btn_;[m
+     [m
+[31m-    // Legacy dials removed: now fully parameter-aware[m
+     [m
+     lv_obj_t* status_label_;[m
+     lv_obj_t* undo_btn_;[m
+[36m@@ -62,12 +58,13 @@[m [mpublic:[m
+     void createUI();[m
+     void createParameterDials();    // NEW: Create parameter-aware dials[m
+     void createButtonControls();    // NEW: Create button controls[m
+[31m-    // void createLegacyDials();    // Legacy dial creation removed[m
+     void createUndoRedoControls();  // NEW: Create undo/redo UI[m
+[31m-    void createStatusArea();        // NEW: Create status/info area[m
+     void updateUndoRedoButtons();   // NEW: Update undo/redo button states[m
+     void simulateMidiCC();[m
+     void updateStatus(const char* control, int value);[m
+[32m+[m[32m    void createStatusArea();        // NEW: Create status/info area[m
+[32m+[m[32m    void handleUndo();              // Undo action[m
+[32m+[m[32m    void handleRedo();              // Redo action[m
+     [m
+ private:[m
+     void initHardware();[m
+[36m@@ -76,6 +73,4 @@[m [mprivate:[m
+     void handleMidiCC(int cc_number, int value);[m
+     void platformDelay(int ms);[m
+     unsigned long getPlatformTick();[m
+[31m-    void handleUndo();[m
+[31m-    void handleRedo();[m
+ };[m
+\ No newline at end of file[m
+[1mdiff --git a/src/hardware/MidiHandler.h b/src/hardware/MidiHandler.h[m
+[1mindex cf9d032..bb28a13 100644[m
+[1m--- a/src/hardware/MidiHandler.h[m
+[1m+++ b/src/hardware/MidiHandler.h[m
+[36m@@ -4,7 +4,8 @@[m
+     #include <Arduino.h>[m
+     #include <string>[m
+     #include <Control_Surface.h>     // Control-Surface with Arduino Core 3.x support[m
+[31m-    [m
+[32m+[m[32m    #include <iostream>[m
+[32m+[m
+ #else[m
+     #include "RtMidi.h"[m
+     #include <iostream>[m
+[36m@@ -29,6 +30,11 @@[m [mprivate:[m
+     [m
+ public:[m
+     MidiHandler() : initialized_(false) {[m
+[32m+[m[32m        #if defined(ESP32_BUILD)[m
+[32m+[m[32m            std::cout << "MidiHandler constructor called!" << std::endl;[m
+[32m+[m[32m        #else[m
+[32m+[m[32m            std::cout << "MidiHandler constructor called!" << std::endl;[m
+[32m+[m[32m        #endif[m
+         #if !defined(ESP32_BUILD)[m
+             try {[m
+                 midi_out_ = std::make_unique<RtMidiOut>();[m
+[36m@@ -41,14 +47,14 @@[m [mpublic:[m
+     [m
+     bool initialize() {[m
+         #if defined(ESP32_BUILD)[m
+[31m-            Serial.println("Initializing Control-Surface USB MIDI...");[m
+[31m-            [m
+[32m+[m[32m            std::cout << "Initializing Control-Surface USB MIDI..." << std::endl;[m
+[32m+[m
+             // Initialize the MIDI interface - this is the key![m
+             midi_interface_.begin();[m
+             [m
+[31m-            Serial.println("✅ Control-Surface USB MIDI initialized successfully!");[m
+[31m-            Serial.println("Device should now appear as USB MIDI device");[m
+[31m-            Serial.println("Check with: lsusb -v -d 303a:1001 | grep -A 5 bInterfaceClass");[m
+[32m+[m[32m            std::cout << "✅ Control-Surface USB MIDI initialized successfully!" << std::endl;[m
+[32m+[m[32m            std::cout << "Device should now appear as USB MIDI device" << std::endl;[m
+[32m+[m[32m            std::cout << "Check with: lsusb -v -d 303a:1001 | grep -A 5 bInterfaceClass" << std::endl;[m
+             initialized_ = true;[m
+             return true;[m
+         #else[m
+[36m@@ -112,7 +118,7 @@[m [mpublic:[m
+         #if defined(ESP32_BUILD)[m
+             // Use Control-Surface's MIDI sending through the interface[m
+             midi_interface_.sendControlChange({cc_number, Channel(channel)}, value);[m
+[31m-            Serial.printf("Control-Surface CC: Ch%d CC%d Val%d\n", channel, cc_number, value);[m
+[32m+[m[32m            // Serial.printf("Control-Surface CC: Ch%d CC%d Val%d\n", channel, cc_number, value);[m
+         #else[m
+             // Desktop - Use RtMidi[m
+             if (!midi_out_) return;[m
+[36m@@ -137,7 +143,7 @@[m [mpublic:[m
+         [m
+         #if defined(ESP32_BUILD)[m
+             midi_interface_.sendNoteOn({note, Channel(channel)}, velocity);[m
+[31m-            Serial.printf("Control-Surface Note On: Ch%d Note%d Vel%d\n", channel, note, velocity);[m
+[32m+[m[32m            // Serial.printf("Control-Surface Note On: Ch%d Note%d Vel%d\n", channel, note, velocity);[m
+         #else[m
+             if (!midi_out_) return;[m
+             [m
+[36m@@ -160,7 +166,7 @@[m [mpublic:[m
+         [m
+         #if defined(ESP32_BUILD)[m
+             midi_interface_.sendNoteOff({note, Channel(channel)}, velocity);[m
+[31m-            Serial.printf("Control-Surface Note Off: Ch%d Note%d\n", channel, note);[m
+[32m+[m[32m            // Serial.printf("Control-Surface Note Off: Ch%d Note%d\n", channel, note);[m
+         #else[m
+             if (!midi_out_) return;[m
+             [m
+[36m@@ -192,19 +198,19 @@[m [mpublic:[m
+     void sendPitchBend(uint8_t channel, int16_t bend) {[m
+         if (!initialized_) return;[m
+         midi_interface_.sendPitchBend(Channel(channel), bend);[m
+[31m-        Serial.printf("Control-Surface Pitch Bend: Ch%d Bend%d\n", channel, bend);[m
+[32m+[m[32m        // Serial.printf("Control-Surface Pitch Bend: Ch%d Bend%d\n", channel, bend);[m
+     }[m
+     [m
+     void sendProgramChange(uint8_t channel, uint8_t program) {[m
+         if (!initialized_) return;[m
+         midi_interface_.sendProgramChange(Channel(channel), program);[m
+[31m-        Serial.printf("Control-Surface Program Change: Ch%d Prog%d\n", channel, program);[m
+[32m+[m[32m        // Serial.printf("Control-Surface Program Change: Ch%d Prog%d\n", channel, program);[m
+     }[m
+     [m
+     void sendAftertouch(uint8_t channel, uint8_t note, uint8_t pressure) {[m
+         if (!initialized_) return;[m
+         midi_interface_.sendKeyPressure({note, Channel(channel)}, pressure);[m
+[31m-        Serial.printf("Control-Surface Aftertouch: Ch%d Note%d Press%d\n", channel, note, pressure);[m
+[32m+[m[32m        // Serial.printf("Control-Surface Aftertouch: Ch%d Note%d Press%d\n", channel, note, pressure);[m
+     }[m
+     #endif[m
+ };[m
+\ No newline at end of file[m
+[1mdiff --git a/src/main.cpp b/src/main.cpp[m
+[1mindex 59372d0..42fb0c2 100644[m
+[1m--- a/src/main.cpp[m
+[1m+++ b/src/main.cpp[m
+[36m@@ -64,9 +64,9 @@[m [mvoid midiTestLoop() {[m
+ #ifdef ESP32_BUILD[m
+ void setup() {[m
+     Serial.begin(115200);[m
+[31m-    delay(1000);  // Short delay for serial[m
+[32m+[m[32m    delay(2000);  // Short delay for serial[m
+     [m
+[31m-    std::cout << "=== ESP32 SynthApp Starting ===" << std::endl;[m
+[32m+[m[32m    std::cout << "=== ESP32 SynthApp Starting 2 ===" << std::endl;[m
+     [m
+     // Initialize MIDI test[m
+     if (midi_handler.initialize()) {[m
+[36m@@ -74,18 +74,21 @@[m [mvoid setup() {[m
+     } else {[m
+         std::cout << "❌ MIDI Test initialization failed!" << std::endl;[m
+     }[m
+[31m-    [m
+[32m+[m[32m    std::cout << "=== About to set up app ===" << std::endl;[m
+[32m+[m
+     app.setup();[m
+ }[m
+ [m
+ void loop() {[m
+[31m-    app.loop();[m
+[32m+[m[32m    // app.loop();[m
+[32m+[m
+[32m+[m[32m    // std::cout << "=== SynthApp Looping ===" << std::endl;[m
+     [m
+     // Run MIDI test[m
+[31m-    midiTestLoop();[m
+[32m+[m[32m    // midiTestLoop();[m
+     [m
+[31m-    // Update MIDI handler[m
+[31m-    midi_handler.update();[m
+[32m+[m[32m    // // Update MIDI handler[m
+[32m+[m[32m    // midi_handler.update();[m
+ }[m
+ #else[m
+ int main() {[m

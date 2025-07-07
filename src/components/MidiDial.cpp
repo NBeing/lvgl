@@ -3,6 +3,9 @@
 // ==============================================
 #include "MidiDial.h"
 
+
+#include "../../include/FontConfig.h"
+
 // Static map to link LVGL objects back to C++ instances
 static std::unordered_map<lv_obj_t*, MidiDial*> dial_widget_map;
 
@@ -26,7 +29,7 @@ MidiDial::MidiDial(lv_obj_t* parent, const char* label, int x, int y)
     name_label_ = lv_label_create(container_);
     lv_label_set_text(name_label_, label);
     lv_obj_set_style_text_color(name_label_, lv_color_hex(0xFFCCCCCC), 0);
-    lv_obj_set_style_text_font(name_label_, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(name_label_, FontA.med, 0);
     lv_obj_align(name_label_, LV_ALIGN_TOP_MID, 0, 2);
     
     // Create arc display using LVGL's built-in arc widget
@@ -54,7 +57,7 @@ MidiDial::MidiDial(lv_obj_t* parent, const char* label, int x, int y)
     value_label_ = lv_label_create(container_);
     lv_label_set_text(value_label_, "000");
     lv_obj_set_style_text_color(value_label_, arc_color_, 0);
-    lv_obj_set_style_text_font(value_label_, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(value_label_, FontA.lg, 0);
     lv_obj_align(value_label_, LV_ALIGN_BOTTOM_MID, 0, -2);
     
     // Set up event handlers for click interaction

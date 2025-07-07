@@ -6,10 +6,12 @@
 #include "../CommandManager.h"
 #include "../ButtonControl.h"
 #include "../LayoutManager.h"
+
 #include <iostream>
 #include <chrono>
 #include <thread>
 #include <cstring>
+#include "../../include/FontConfig.h"
 
 #if defined(ESP32_BUILD)
     #include "../../hardware/ESP32Display.h"
@@ -142,9 +144,9 @@ void SynthApp::createUI() {
     // Set dark background for 8-bit retro feel
     lv_obj_t* screen = lv_screen_active();
     if (!screen) {
-#if SYNTHAPP_DEBUG_UI_CHECKS
-        std::cerr << "[UI-ERR] lv_screen_active() returned nullptr!" << std::endl;
-#endif
+        #if SYNTHAPP_DEBUG_UI_CHECKS
+                std::cerr << "[UI-ERR] lv_screen_active() returned nullptr!" << std::endl;
+        #endif
         return;
     }
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x0a0a0a), 0);
@@ -170,13 +172,7 @@ void SynthApp::createUI() {
     }
     lv_label_set_text(title, "LVGL Synth GUI - Parameter System");
     lv_obj_set_style_text_color(title, lv_color_hex(0x00FF00), 0);
-
-    // Use appropriate font based on screen size
-    if (LayoutManager::getScreenSize() == LayoutManager::ScreenSize::SMALL) {
-        lv_obj_set_style_text_font(title, &lv_font_montserrat_12, 0);
-    } else {
-        lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
-    }
+    lv_obj_set_style_text_font(title, FontA.lg, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, config.margin_y / 2);
 
     // Create help message label (only on larger screens)
@@ -189,7 +185,7 @@ void SynthApp::createUI() {
         } else {
             lv_label_set_text(help_label, "NEW: Parameter-aware dials (top) • OLD: Legacy dials (bottom)");
             lv_obj_set_style_text_color(help_label, lv_color_hex(0xCCCCCC), 0);
-            lv_obj_set_style_text_font(help_label, &lv_font_montserrat_10, 0);
+            lv_obj_set_style_text_font(help_label, FontA.med, 0);
             lv_obj_align(help_label, LV_ALIGN_TOP_MID, 0, config.margin_y / 2 + 25);
         }
     }
@@ -512,6 +508,7 @@ void SynthApp::createUndoRedoControls() {
 #endif
     lv_label_set_text(undo_label, "UNDO");
     lv_obj_set_style_text_color(undo_label, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_text_font(undo_label, FontA.lg, 0);
     lv_obj_center(undo_label);
     undo_label_ = undo_label;
 
@@ -536,6 +533,7 @@ void SynthApp::createUndoRedoControls() {
 #endif
     lv_label_set_text(redo_label, "REDO");
     lv_obj_set_style_text_color(redo_label, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_text_font(redo_label, FontA.lg, 0);
     lv_obj_center(redo_label);
     redo_label_ = redo_label;
 
@@ -572,6 +570,7 @@ void SynthApp::createUndoRedoControls() {
 #endif
         lv_label_set_text(btn_label, "Simulate Values");
         lv_obj_set_style_text_color(btn_label, lv_color_hex(0x00FF00), 0);
+        lv_obj_set_style_text_font(btn_label, FontA.lg, 0);
         lv_obj_center(btn_label);
 
         // Add button click event
@@ -633,13 +632,7 @@ void SynthApp::createStatusArea() {
         lv_label_set_text(status_label, "Ready - Compare NEW vs OLD dial systems");
     }
     lv_obj_set_style_text_color(status_label, lv_color_hex(0xFFFF00), 0);
-
-    // Use appropriate font size
-    if (LayoutManager::getScreenSize() == LayoutManager::ScreenSize::SMALL) {
-        lv_obj_set_style_text_font(status_label, &lv_font_montserrat_10, 0);
-    } else {
-        lv_obj_set_style_text_font(status_label, &lv_font_montserrat_10, 0);
-    }
+    lv_obj_set_style_text_font(status_label, FontA.med, 0);
     lv_obj_center(status_label);
 
     // Store status label for updates

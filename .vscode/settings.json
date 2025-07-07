@@ -64,7 +64,8 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "format": "cpp"
+        "format": "cpp",
+        "cstring": "cpp"
     },
     
     // File exclusions for better performance

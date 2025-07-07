@@ -1,6 +1,8 @@
+
 #include "ParameterControl.h"
 #include <unordered_map>
 #include <iostream>
+#include "../../include/FontConfig.h"
 
 // Static map for dial control callbacks
 std::unordered_map<lv_obj_t*, DialControl*> DialControl::dial_control_map_;
@@ -146,7 +148,7 @@ void DialControl::createWidgets(lv_obj_t* parent, int x, int y) {
     // Create parameter name label
     name_label_ = lv_label_create(container_);
     lv_obj_set_style_text_color(name_label_, lv_color_hex(0xFFCCCCCC), 0);
-    lv_obj_set_style_text_font(name_label_, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(name_label_, FontA.med, 0);
     lv_obj_align(name_label_, LV_ALIGN_TOP_MID, 0, 2);
     
     // Create arc display
@@ -165,7 +167,7 @@ void DialControl::createWidgets(lv_obj_t* parent, int x, int y) {
     // Create value display label
     value_label_ = lv_label_create(container_);
     lv_obj_set_style_text_color(value_label_, arc_color_, 0);
-    lv_obj_set_style_text_font(value_label_, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(value_label_, FontA.lg, 0);
     lv_obj_align(value_label_, LV_ALIGN_BOTTOM_MID, 0, -2);
     
     // Set up event handlers
