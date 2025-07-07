@@ -1,3 +1,7 @@
+
+#include <lvgl.h>
+// Global root container for LVGL UI
+lv_obj_t* root_container = nullptr;
 // Update SynthApp to use the modular display driver
 #include "SynthApp.h"
 #include "../MidiDial.h"
@@ -6,12 +10,12 @@
 #include "../CommandManager.h"
 #include "../ButtonControl.h"
 #include "../LayoutManager.h"
-
+#include "../../../include/FontConfig.h"
+#include "../../../include/Constants.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
 #include <cstring>
-#include "../../include/FontConfig.h"
 
 #if defined(ESP32_BUILD)
     #include "../../hardware/ESP32Display.h"
@@ -110,17 +114,18 @@ void SynthApp::initDesktop() {
     lv_init();
     
     // Use LVGL's built-in SDL integration
-    lv_display_t* disp = lv_sdl_window_create(480, 320);
+    // Set to ESP32's native resolution for parity
+    lv_display_t* disp = lv_sdl_window_create(SynthConstants::ESP32_SCREEN_WIDTH, SynthConstants::ESP32_SCREEN_HEIGHT);
     if (!disp) {
         std::cerr << "Failed to create SDL window!" << std::endl;
         return;
     }
     
     // Create SDL mouse input
-    lv_indev_t* mouse = lv_sdl_mouse_create();
+    lv_sdl_mouse_create();
     
     // Optional: Create SDL keyboard input
-    lv_indev_t* kb = lv_sdl_keyboard_create();
+    lv_sdl_keyboard_create();
     
     // Set up tick function
     lv_tick_set_cb([]() -> uint32_t {
@@ -137,22 +142,21 @@ void SynthApp::createUI() {
     // Initialize the layout manager first
     LayoutManager::initialize();
     const auto& config = LayoutManager::getConfig();
-    std::cout << "Using layout config: dial_size=" << config.dial_size 
+    std::cout << "Using layout config: dial_size=" << config.dial_size
               << ", spacing=" << config.dial_spacing_x << "x" << config.dial_spacing_y
               << ", margins=" << config.margin_x << "x" << config.margin_y << std::endl;
 
-    // Set dark background for 8-bit retro feel
-    lv_obj_t* screen = lv_screen_active();
-    if (!screen) {
-        #if SYNTHAPP_DEBUG_UI_CHECKS
-                std::cerr << "[UI-ERR] lv_screen_active() returned nullptr!" << std::endl;
-        #endif
-        return;
-    }
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x0a0a0a), 0);
+
+    // Create a fixed-size root container for pixel-perfect ESP32 parity
+    extern lv_obj_t* root_container;
+    root_container = lv_obj_create(NULL);
+    lv_obj_set_size(root_container, SynthConstants::ESP32_SCREEN_WIDTH, SynthConstants::ESP32_SCREEN_HEIGHT);
+    lv_obj_center(root_container); // Center in the window (desktop)
+    lv_obj_set_style_bg_color(root_container, lv_color_hex(SynthConstants::Color::BG), 0);
+    lv_scr_load(root_container);
     // Add a transparent background object to catch and debug touch events
-    lv_obj_t* debug_bg = lv_obj_create(screen);
-    lv_obj_set_size(debug_bg, lv_obj_get_width(screen), lv_obj_get_height(screen));
+    lv_obj_t* debug_bg = lv_obj_create(root_container);
+    lv_obj_set_size(debug_bg, SynthConstants::ESP32_SCREEN_WIDTH, SynthConstants::ESP32_SCREEN_HEIGHT);
     lv_obj_set_style_bg_opa(debug_bg, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(debug_bg, LV_OBJ_FLAG_CLICKABLE); // Don't block events
     lv_obj_move_background(debug_bg);
@@ -163,30 +167,30 @@ void SynthApp::createUI() {
     }, LV_EVENT_ALL, NULL);
 
     // Create title with responsive positioning and font
-    lv_obj_t* title = lv_label_create(screen);
+    lv_obj_t* title = lv_label_create(root_container);
     if (!title) {
 #if SYNTHAPP_DEBUG_UI_CHECKS
         std::cerr << "[UI-ERR] Failed to create title label!" << std::endl;
 #endif
         return;
     }
-    lv_label_set_text(title, "LVGL Synth GUI - Parameter System");
-    lv_obj_set_style_text_color(title, lv_color_hex(0x00FF00), 0);
+    lv_label_set_text(title, SynthConstants::Text::TITLE);
+    lv_obj_set_style_text_color(title, lv_color_hex(SynthConstants::Color::TITLE), 0);
     lv_obj_set_style_text_font(title, FontA.lg, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, config.margin_y / 2);
 
     // Create help message label (only on larger screens)
     if (LayoutManager::getScreenSize() != LayoutManager::ScreenSize::SMALL) {
-        lv_obj_t* help_label = lv_label_create(screen);
+        lv_obj_t* help_label = lv_label_create(root_container);
         if (!help_label) {
 #if SYNTHAPP_DEBUG_UI_CHECKS
             std::cerr << "[UI-ERR] Failed to create help label!" << std::endl;
 #endif
         } else {
-            lv_label_set_text(help_label, "NEW: Parameter-aware dials (top) • OLD: Legacy dials (bottom)");
-            lv_obj_set_style_text_color(help_label, lv_color_hex(0xCCCCCC), 0);
+            lv_label_set_text(help_label, SynthConstants::Text::HELP);
+            lv_obj_set_style_text_color(help_label, lv_color_hex(SynthConstants::Color::HELP), 0);
             lv_obj_set_style_text_font(help_label, FontA.med, 0);
-            lv_obj_align(help_label, LV_ALIGN_TOP_MID, 0, config.margin_y / 2 + 25);
+            lv_obj_align(help_label, LV_ALIGN_TOP_MID, 0, config.margin_y / 2 + SynthConstants::Layout::HELP_LABEL_Y_OFFSET);
         }
     }
 
@@ -204,7 +208,8 @@ void SynthApp::createParameterDials() {
     std::cout << "Creating NEW parameter-aware dials..." << std::endl;
     
     const auto& config = LayoutManager::getConfig();
-    lv_obj_t* screen = lv_screen_active();
+    extern lv_obj_t* root_container;
+    lv_obj_t* screen = root_container;
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!screen) {
         std::cerr << "[UI-ERR] lv_screen_active() returned nullptr in createParameterDials!" << std::endl;
@@ -212,9 +217,9 @@ void SynthApp::createParameterDials() {
     }
 #endif
     // Calculate starting position for the dial grid
-    int grid_start_y = 60; // Title area
+    int grid_start_y = SynthConstants::Layout::TITLE_Y_SMALL; // Title area
     if (LayoutManager::getScreenSize() != LayoutManager::ScreenSize::SMALL) {
-        grid_start_y = 70; // Account for help text on larger screens
+        grid_start_y = SynthConstants::Layout::TITLE_Y_LARGE; // Account for help text on larger screens
     }
 
     // Create parameter-aware dials using responsive grid layout
@@ -227,7 +232,7 @@ void SynthApp::createParameterDials() {
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!cutoff_dial_) std::cerr << "[UI-ERR] Failed to create cutoff_dial_!" << std::endl;
 #endif
-    cutoff_dial_->setColor(lv_color_hex(0x00FF00));  // Green
+    cutoff_dial_->setColor(lv_color_hex(SynthConstants::Color::DIAL_GREEN));  // Green
     cutoff_dial_->setDialSize(config.dial_size);
     cutoff_dial_->setSize(config.dial_size + 20, config.dial_size + 30);
     cutoff_dial_->setPosition(dial_x, dial_y);
@@ -238,7 +243,7 @@ void SynthApp::createParameterDials() {
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!resonance_dial_) std::cerr << "[UI-ERR] Failed to create resonance_dial_!" << std::endl;
 #endif
-    resonance_dial_->setColor(lv_color_hex(0xFF8000));  // Orange
+    resonance_dial_->setColor(lv_color_hex(SynthConstants::Color::DIAL_ORANGE));  // Orange
     resonance_dial_->setDialSize(config.dial_size);
     resonance_dial_->setSize(config.dial_size + 20, config.dial_size + 30);
     resonance_dial_->setPosition(dial_x, dial_y);
@@ -249,7 +254,7 @@ void SynthApp::createParameterDials() {
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!volume_dial_) std::cerr << "[UI-ERR] Failed to create volume_dial_!" << std::endl;
 #endif
-    volume_dial_->setColor(lv_color_hex(0x0080FF));  // Blue
+    volume_dial_->setColor(lv_color_hex(SynthConstants::Color::DIAL_BLUE));  // Blue
     volume_dial_->setDialSize(config.dial_size);
     volume_dial_->setSize(config.dial_size + 20, config.dial_size + 30);
     volume_dial_->setPosition(dial_x, dial_y);
@@ -261,7 +266,7 @@ void SynthApp::createParameterDials() {
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!attack_dial_) std::cerr << "[UI-ERR] Failed to create attack_dial_!" << std::endl;
 #endif
-    attack_dial_->setColor(lv_color_hex(0xFF00FF));  // Magenta
+    attack_dial_->setColor(lv_color_hex(SynthConstants::Color::DIAL_MAGENTA));  // Magenta
     attack_dial_->setDialSize(config.dial_size);
     attack_dial_->setSize(config.dial_size + 20, config.dial_size + 30);
     attack_dial_->setPosition(dial_x, dial_y);
@@ -272,7 +277,7 @@ void SynthApp::createParameterDials() {
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!release_dial_) std::cerr << "[UI-ERR] Failed to create release_dial_!" << std::endl;
 #endif
-    release_dial_->setColor(lv_color_hex(0x80FF00));  // Yellow-green
+    release_dial_->setColor(lv_color_hex(SynthConstants::Color::DIAL_YELLOW_GREEN));  // Yellow-green
     release_dial_->setDialSize(config.dial_size);
     release_dial_->setSize(config.dial_size + 20, config.dial_size + 30);
     release_dial_->setPosition(dial_x, dial_y);
@@ -283,7 +288,7 @@ void SynthApp::createParameterDials() {
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!lfo_rate_dial_) std::cerr << "[UI-ERR] Failed to create lfo_rate_dial_!" << std::endl;
 #endif
-    lfo_rate_dial_->setColor(lv_color_hex(0xFF0080));  // Pink
+    lfo_rate_dial_->setColor(lv_color_hex(SynthConstants::Color::DIAL_PINK));  // Pink
     lfo_rate_dial_->setDialSize(config.dial_size);
     lfo_rate_dial_->setSize(config.dial_size + 20, config.dial_size + 30);
     lfo_rate_dial_->setPosition(dial_x, dial_y);
@@ -305,23 +310,23 @@ void SynthApp::createParameterDials() {
         if (parameter) {
             dial->bindParameter(parameter);
             // Set up value change callback with MIDI output
-            dial->setValueChangedCallback([this](uint8_t /* value */, const Parameter* param) {
-                if (midi_handler_->isConnected()) {
-                    midi_handler_->sendControlChange(1, param->getCCNumber(), param->getCurrentValue());
-                }
-                char status_text[100];
-                snprintf(status_text, sizeof(status_text), 
-                        "NEW: %s = %s (CC%d)", 
-                        param->getShortName().c_str(),
-                        param->getValueDisplayText().c_str(),
-                        static_cast<int>(param->getCCNumber()));
-                if (status_label_) {
-                    lv_label_set_text(status_label_, status_text);
-                }
-                std::cout << "Parameter changed: " << param->getName() 
-                          << " = " << param->getValueDisplayText() 
-                          << " (CC " << static_cast<int>(param->getCCNumber()) << ")" << std::endl;
-            });
+    dial->setValueChangedCallback([this](uint8_t /* value */, const Parameter* param) {
+        if (midi_handler_->isConnected()) {
+            midi_handler_->sendControlChange(SynthConstants::Midi::CHANNEL, param->getCCNumber(), param->getCurrentValue());
+        }
+        char status_text[SynthConstants::Buffer::STATUS];
+        snprintf(status_text, sizeof(status_text), 
+                "NEW: %s = %s (CC%d)", 
+                param->getShortName().c_str(),
+                param->getValueDisplayText().c_str(),
+                static_cast<int>(param->getCCNumber()));
+        if (status_label_) {
+            lv_label_set_text(status_label_, status_text);
+        }
+        std::cout << "Parameter changed: " << param->getName() 
+                  << " = " << param->getValueDisplayText() 
+                  << " (CC " << static_cast<int>(param->getCCNumber()) << ")" << std::endl;
+    });
             std::cout << "Bound dial to parameter: " << param_name 
                       << " (CC " << static_cast<int>(parameter->getCCNumber()) << ")" << std::endl;
         } else {
@@ -340,7 +345,8 @@ void SynthApp::createButtonControls() {
     std::cout << "Creating button controls..." << std::endl;
     
     const auto& config = LayoutManager::getConfig();
-    lv_obj_t* screen = lv_screen_active();
+    extern lv_obj_t* root_container;
+    lv_obj_t* screen = root_container;
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!screen) {
         std::cerr << "[UI-ERR] lv_screen_active() returned nullptr in createButtonControls!" << std::endl;
@@ -362,7 +368,7 @@ void SynthApp::createButtonControls() {
         // Center buttons horizontally
         int content_width, content_height;
         LayoutManager::getContentArea(&content_width, &content_height);
-        btn_x = config.margin_x + (content_width - config.button_width) / 2;
+        btn_x = config.margin_x + ((content_width - config.button_width) / 2);
     } else {
         // On larger screens, put buttons to the right of the dials
         btn_x = config.margin_x + config.grid_cols * config.dial_spacing_x + 20;
@@ -376,9 +382,9 @@ void SynthApp::createButtonControls() {
     if (!filter_enable_btn_) std::cerr << "[UI-ERR] Failed to create filter_enable_btn_!" << std::endl;
 #endif
     filter_enable_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
-    filter_enable_btn_->setText("FILTER");
-    filter_enable_btn_->setToggleColors(lv_color_hex(0x444444), lv_color_hex(0x00AA00));
-    filter_enable_btn_->setToggleValues(0, 127);
+    filter_enable_btn_->setText(SynthConstants::Text::BTN_FILTER);
+    filter_enable_btn_->setToggleColors(lv_color_hex(SynthConstants::Color::BTN_FILTER_OFF), lv_color_hex(SynthConstants::Color::BTN_FILTER_ON));
+    filter_enable_btn_->setToggleValues(SynthConstants::Midi::BTN_TOGGLE_OFF, SynthConstants::Midi::BTN_TOGGLE_ON);
     filter_enable_btn_->setSize(config.button_width, config.button_height);
     filter_enable_btn_->setPosition(btn_x, btn_y);
 
@@ -388,9 +394,9 @@ void SynthApp::createButtonControls() {
     if (!lfo_sync_btn_) std::cerr << "[UI-ERR] Failed to create lfo_sync_btn_!" << std::endl;
 #endif
     lfo_sync_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
-    lfo_sync_btn_->setText("LFO SYNC");
-    lfo_sync_btn_->setToggleColors(lv_color_hex(0x444444), lv_color_hex(0xFF8800));
-    lfo_sync_btn_->setToggleValues(0, 127);
+    lfo_sync_btn_->setText(SynthConstants::Text::BTN_LFO);
+    lfo_sync_btn_->setToggleColors(lv_color_hex(SynthConstants::Color::BTN_LFO_OFF), lv_color_hex(SynthConstants::Color::BTN_LFO_ON));
+    lfo_sync_btn_->setToggleValues(SynthConstants::Midi::BTN_TOGGLE_OFF, SynthConstants::Midi::BTN_TOGGLE_ON);
     lfo_sync_btn_->setSize(config.button_width, config.button_height);
     lfo_sync_btn_->setPosition(btn_x, btn_y + config.button_spacing);
 
@@ -400,9 +406,9 @@ void SynthApp::createButtonControls() {
     if (!trigger_btn_) std::cerr << "[UI-ERR] Failed to create trigger_btn_!" << std::endl;
 #endif
     trigger_btn_->setMode(ButtonControl::ButtonMode::TRIGGER);
-    trigger_btn_->setText("TRIGGER");
-    trigger_btn_->setColors(lv_color_hex(0x666666), lv_color_hex(0xFF0000));
-    trigger_btn_->setTriggerValue(127, 0);
+    trigger_btn_->setText(SynthConstants::Text::BTN_TRIGGER);
+    trigger_btn_->setColors(lv_color_hex(SynthConstants::Color::BTN_TRIGGER_OFF), lv_color_hex(SynthConstants::Color::BTN_TRIGGER_ON));
+    trigger_btn_->setTriggerValue(SynthConstants::Midi::BTN_TRIGGER_ON, SynthConstants::Midi::BTN_TRIGGER_OFF);
     trigger_btn_->setSize(config.button_width, config.button_height);
     trigger_btn_->setPosition(btn_x, btn_y + 2*config.button_spacing);
 
@@ -440,21 +446,21 @@ void SynthApp::createButtonControls() {
     // Set up callbacks for all buttons
     filter_enable_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
         if (midi_handler_->isConnected() && param) {
-            midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            midi_handler_->sendControlChange(SynthConstants::Midi::CHANNEL, param->getCCNumber(), value);
         }
         std::cout << "Filter Enable: " << (value > 63 ? "ON" : "OFF") << std::endl;
     });
 
     lfo_sync_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
         if (midi_handler_->isConnected() && param) {
-            midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            midi_handler_->sendControlChange(SynthConstants::Midi::CHANNEL, param->getCCNumber(), value);
         }
         std::cout << "LFO Sync: " << (value > 63 ? "ON" : "OFF") << std::endl;
     });
 
     trigger_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
         if (midi_handler_->isConnected() && param) {
-            midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            midi_handler_->sendControlChange(SynthConstants::Midi::CHANNEL, param->getCCNumber(), value);
         }
         std::cout << "Trigger: " << static_cast<int>(value) << std::endl;
     });
@@ -464,7 +470,8 @@ void SynthApp::createUndoRedoControls() {
     std::cout << "Creating undo/redo controls..." << std::endl;
     
     const auto& config = LayoutManager::getConfig();
-    lv_obj_t* screen = lv_screen_active();
+    extern lv_obj_t* root_container;
+    lv_obj_t* screen = root_container;
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!screen) {
         std::cerr << "[UI-ERR] lv_screen_active() returned nullptr in createUndoRedoControls!" << std::endl;
@@ -483,8 +490,8 @@ void SynthApp::createUndoRedoControls() {
         undo_y = content_height - config.button_height - config.margin_y;
     } else {
         // Larger screens: bottom area
-        undo_x = config.margin_x + 100;
-        undo_y = content_height - config.button_height - 20;
+        undo_x = config.margin_x + SynthConstants::Layout::UNDO_X_LG;
+        undo_y = content_height - config.button_height - SynthConstants::Layout::UNDO_Y_LG;
     }
 
     // Create undo button
@@ -496,18 +503,18 @@ void SynthApp::createUndoRedoControls() {
     lv_obj_set_pos(undo_btn_, undo_x, undo_y);
 
     // Style the undo button
-    lv_obj_set_style_bg_color(undo_btn_, lv_color_hex(0x333333), 0);
-    lv_obj_set_style_border_color(undo_btn_, lv_color_hex(0x888888), 0);
-    lv_obj_set_style_border_width(undo_btn_, 1, 0);
-    lv_obj_set_style_radius(undo_btn_, 4, 0);
+    lv_obj_set_style_bg_color(undo_btn_, lv_color_hex(SynthConstants::Color::BTN_UNDO_BG), 0);
+    lv_obj_set_style_border_color(undo_btn_, lv_color_hex(SynthConstants::Color::BTN_UNDO_BORDER), 0);
+    lv_obj_set_style_border_width(undo_btn_, SynthConstants::Layout::STATUS_BORDER_WIDTH, 0);
+    lv_obj_set_style_radius(undo_btn_, SynthConstants::Layout::STATUS_RADIUS, 0);
 
     // Undo button label
     lv_obj_t* undo_label = lv_label_create(undo_btn_);
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!undo_label) std::cerr << "[UI-ERR] Failed to create undo_label!" << std::endl;
 #endif
-    lv_label_set_text(undo_label, "UNDO");
-    lv_obj_set_style_text_color(undo_label, lv_color_hex(0xCCCCCC), 0);
+    lv_label_set_text(undo_label, SynthConstants::Text::BTN_UNDO);
+    lv_obj_set_style_text_color(undo_label, lv_color_hex(SynthConstants::Color::HELP), 0);
     lv_obj_set_style_text_font(undo_label, FontA.lg, 0);
     lv_obj_center(undo_label);
     undo_label_ = undo_label;
@@ -521,18 +528,18 @@ void SynthApp::createUndoRedoControls() {
     lv_obj_set_pos(redo_btn_, undo_x + config.button_width + 10, undo_y);
 
     // Style the redo button
-    lv_obj_set_style_bg_color(redo_btn_, lv_color_hex(0x333333), 0);
-    lv_obj_set_style_border_color(redo_btn_, lv_color_hex(0x888888), 0);
-    lv_obj_set_style_border_width(redo_btn_, 1, 0);
-    lv_obj_set_style_radius(redo_btn_, 4, 0);
+    lv_obj_set_style_bg_color(redo_btn_, lv_color_hex(SynthConstants::Color::BTN_REDO_BG), 0);
+    lv_obj_set_style_border_color(redo_btn_, lv_color_hex(SynthConstants::Color::BTN_REDO_BORDER), 0);
+    lv_obj_set_style_border_width(redo_btn_, SynthConstants::Layout::STATUS_BORDER_WIDTH, 0);
+    lv_obj_set_style_radius(redo_btn_, SynthConstants::Layout::STATUS_RADIUS, 0);
 
     // Redo button label
     lv_obj_t* redo_label = lv_label_create(redo_btn_);
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!redo_label) std::cerr << "[UI-ERR] Failed to create redo_label!" << std::endl;
 #endif
-    lv_label_set_text(redo_label, "REDO");
-    lv_obj_set_style_text_color(redo_label, lv_color_hex(0xCCCCCC), 0);
+    lv_label_set_text(redo_label, SynthConstants::Text::BTN_REDO);
+    lv_obj_set_style_text_color(redo_label, lv_color_hex(SynthConstants::Color::HELP), 0);
     lv_obj_set_style_text_font(redo_label, FontA.lg, 0);
     lv_obj_center(redo_label);
     redo_label_ = redo_label;
@@ -554,22 +561,22 @@ void SynthApp::createUndoRedoControls() {
 #if SYNTHAPP_DEBUG_UI_CHECKS
         if (!sim_button) std::cerr << "[UI-ERR] Failed to create sim_button!" << std::endl;
 #endif
-        lv_obj_set_size(sim_button, LayoutManager::scaleSize(200), config.button_height);
-        lv_obj_align(sim_button, LV_ALIGN_BOTTOM_MID, 0, -config.status_height - config.button_height - 10);
+        lv_obj_set_size(sim_button, LayoutManager::scaleSize(SynthConstants::Layout::SIM_BTN_WIDTH), config.button_height);
+        lv_obj_align(sim_button, LV_ALIGN_BOTTOM_MID, 0, -config.status_height - config.button_height - SynthConstants::Layout::SIM_BTN_Y_OFFSET);
 
         // Style the button for 8-bit look
-        lv_obj_set_style_bg_color(sim_button, lv_color_hex(0x333333), 0);
-        lv_obj_set_style_border_color(sim_button, lv_color_hex(0x00FF00), 0);
+        lv_obj_set_style_bg_color(sim_button, lv_color_hex(SynthConstants::Color::SIM_BTN_BG), 0);
+        lv_obj_set_style_border_color(sim_button, lv_color_hex(SynthConstants::Color::SIM_BTN_BORDER), 0);
         lv_obj_set_style_border_width(sim_button, 2, 0);
-        lv_obj_set_style_radius(sim_button, 4, 0);
+        lv_obj_set_style_radius(sim_button, SynthConstants::Layout::STATUS_RADIUS, 0);
 
         // Button label
         lv_obj_t* btn_label = lv_label_create(sim_button);
 #if SYNTHAPP_DEBUG_UI_CHECKS
         if (!btn_label) std::cerr << "[UI-ERR] Failed to create sim_button label!" << std::endl;
 #endif
-        lv_label_set_text(btn_label, "Simulate Values");
-        lv_obj_set_style_text_color(btn_label, lv_color_hex(0x00FF00), 0);
+        lv_label_set_text(btn_label, SynthConstants::Text::BTN_SIMULATE);
+        lv_obj_set_style_text_color(btn_label, lv_color_hex(SynthConstants::Color::SIM_BTN_TEXT), 0);
         lv_obj_set_style_text_font(btn_label, FontA.lg, 0);
         lv_obj_center(btn_label);
 
@@ -586,7 +593,8 @@ void SynthApp::createUndoRedoControls() {
 
 void SynthApp::createStatusArea() {
     const auto& config = LayoutManager::getConfig();
-    lv_obj_t* screen = lv_screen_active();
+    extern lv_obj_t* root_container;
+    lv_obj_t* screen = root_container;
 #if SYNTHAPP_DEBUG_UI_CHECKS
     if (!screen) {
         std::cerr << "[UI-ERR] lv_screen_active() returned nullptr in createStatusArea!" << std::endl;
@@ -613,10 +621,10 @@ void SynthApp::createStatusArea() {
 #endif
     lv_obj_set_size(status_area, status_width, status_height);
     lv_obj_align(status_area, LV_ALIGN_BOTTOM_MID, 0, -config.margin_y);
-    lv_obj_set_style_bg_color(status_area, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_style_border_color(status_area, lv_color_hex(0x444444), 0);
-    lv_obj_set_style_border_width(status_area, 1, 0);
-    lv_obj_set_style_radius(status_area, 4, 0);
+    lv_obj_set_style_bg_color(status_area, lv_color_hex(SynthConstants::Color::STATUS_BG), 0);
+    lv_obj_set_style_border_color(status_area, lv_color_hex(SynthConstants::Color::STATUS_BORDER), 0);
+    lv_obj_set_style_border_width(status_area, SynthConstants::Layout::STATUS_BORDER_WIDTH, 0);
+    lv_obj_set_style_radius(status_area, SynthConstants::Layout::STATUS_RADIUS, 0);
 
     // Status label inside the area
     lv_obj_t* status_label = lv_label_create(status_area);
@@ -627,11 +635,11 @@ void SynthApp::createStatusArea() {
     }
 #endif
     if (LayoutManager::getScreenSize() == LayoutManager::ScreenSize::SMALL) {
-        lv_label_set_text(status_label, "Parameter System Ready");
+        lv_label_set_text(status_label, SynthConstants::Text::STATUS_READY);
     } else {
-        lv_label_set_text(status_label, "Ready - Compare NEW vs OLD dial systems");
+        lv_label_set_text(status_label, SynthConstants::Text::STATUS_READY_LG);
     }
-    lv_obj_set_style_text_color(status_label, lv_color_hex(0xFFFF00), 0);
+    lv_obj_set_style_text_color(status_label, lv_color_hex(SynthConstants::Color::STATUS), 0);
     lv_obj_set_style_text_font(status_label, FontA.med, 0);
     lv_obj_center(status_label);
 
@@ -651,26 +659,26 @@ void SynthApp::updateUndoRedoButtons() {
     // Update undo button state
     bool can_undo = command_manager_->canUndo();
     lv_obj_set_style_bg_color(undo_btn_, 
-                             can_undo ? lv_color_hex(0x004400) : lv_color_hex(0x333333), 
+                             can_undo ? lv_color_hex(SynthConstants::Color::BTN_UNDO_ACTIVE) : lv_color_hex(SynthConstants::Color::BTN_UNDO_BG), 
                              LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(undo_label_, 
-                               can_undo ? lv_color_hex(0x00FF00) : lv_color_hex(0x666666), 
+                               can_undo ? lv_color_hex(SynthConstants::Color::BTN_UNDO_TEXT) : lv_color_hex(SynthConstants::Color::BTN_UNDO_TEXT_DISABLED), 
                                LV_STATE_DEFAULT);
 
     // Update redo button state
     bool can_redo = command_manager_->canRedo();
     lv_obj_set_style_bg_color(redo_btn_, 
-                             can_redo ? lv_color_hex(0x444400) : lv_color_hex(0x333333), 
+                             can_redo ? lv_color_hex(SynthConstants::Color::BTN_REDO_ACTIVE) : lv_color_hex(SynthConstants::Color::BTN_REDO_BG), 
                              LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(redo_label_, 
-                               can_redo ? lv_color_hex(0xFFFF00) : lv_color_hex(0x666666), 
+                               can_redo ? lv_color_hex(SynthConstants::Color::BTN_REDO_TEXT) : lv_color_hex(SynthConstants::Color::BTN_REDO_TEXT_DISABLED), 
                                LV_STATE_DEFAULT);
 
     // Update status with undo/redo info
     if (status_label_) {
-        char status_text[150];
+        char status_text[SynthConstants::Buffer::STATUS_UNDO_REDO];
         snprintf(status_text, sizeof(status_text), 
-                "Undo: %s | Redo: %s", 
+                SynthConstants::Text::STATUS_UNDO_REDO_FORMAT, 
                 command_manager_->getUndoDescription().c_str(),
                 command_manager_->getRedoDescription().c_str());
         lv_label_set_text(status_label_, status_text);
@@ -698,7 +706,7 @@ void SynthApp::handleMidiCC(int cc_number, int value) {
     }
     
     // Send MIDI CC message on channel 1 using Control_Surface
-    midi_handler_->sendControlChange(1, cc_number, value);
+    midi_handler_->sendControlChange(SynthConstants::Midi::CHANNEL, cc_number, value);
 }
 
 void SynthApp::platformDelay(int ms) {
@@ -715,13 +723,12 @@ unsigned long SynthApp::getPlatformTick() {
 
 void SynthApp::simulateMidiCC() {
     static int sim_counter = 0;
-    
+
     // Cycle through different values for demonstration
-    int values[] = {0, 32, 64, 96, 127};
-    int value = values[sim_counter % 5];
-    
+    int value = SynthConstants::Midi::SIM_VALUES[sim_counter % 5];
+
     std::cout << "Simulating MIDI CC values set to: " << value << std::endl;
-    
+
     // Update NEW parameter-aware dials
     if (cutoff_dial_ && cutoff_dial_->getBoundParameter()) {
         cutoff_dial_->getBoundParameter()->setValue(value);
@@ -732,18 +739,18 @@ void SynthApp::simulateMidiCC() {
     if (volume_dial_ && volume_dial_->getBoundParameter()) {
         volume_dial_->getBoundParameter()->setValue(value);
     }
-    
+
     // Legacy dials removed
-    
-    updateStatus("SIMULATION", value);
+
+    updateStatus(SynthConstants::Text::STATUS_SIM, value);
     sim_counter++;
 }
 
 void SynthApp::updateStatus(const char* control, int value) {
     if (status_label_) {
-        char status_text[100];
+        char status_text[SynthConstants::Buffer::STATUS];
         snprintf(status_text, sizeof(status_text), 
-                "Last: %s = %d (CC%d)", control, value, 
+                SynthConstants::Text::STATUS_FORMAT, control, value, 
                 strcmp(control, "CUTOFF") == 0 ? 74 :
                 strcmp(control, "RESONANCE") == 0 ? 71 : 7);
         lv_label_set_text(status_label_, status_text);

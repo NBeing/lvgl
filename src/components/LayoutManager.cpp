@@ -104,12 +104,8 @@ void LayoutManager::getGridPosition(int grid_x, int grid_y, int* out_x, int* out
 }
 
 int LayoutManager::scaleSize(int base_size) {
-    switch (getScreenSize()) {
-        case ScreenSize::SMALL:  return base_size * 0.6;
-        case ScreenSize::MEDIUM: return base_size * 0.8;
-        case ScreenSize::LARGE:  return base_size;
-    }
-    return base_size;
+    // Always apply UI_SCALE for desktop/ESP32 parity
+    return static_cast<int>(base_size * UI_SCALE);
 }
 
 void LayoutManager::getContentArea(int* width, int* height) {

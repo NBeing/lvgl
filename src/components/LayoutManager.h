@@ -1,3 +1,11 @@
+#include "../../include/Constants.h"
+
+// UI scaling factor for ESP32 vs Desktop
+#if defined(ESP32_BUILD)
+#define UI_SCALE 1.0f
+#else
+#define UI_SCALE 2.0f
+#endif
 #pragma once
 
 #include "lvgl.h"
@@ -12,25 +20,25 @@ public:
 
     struct LayoutConfig {
         // Dial configuration
-        int dial_size;
-        int dial_spacing_x;
-        int dial_spacing_y;
+        int dial_size = SynthConstants::DEFAULT_DIAL_SIZE;
+        int dial_spacing_x = SynthConstants::DEFAULT_DIAL_SPACING_X;
+        int dial_spacing_y = SynthConstants::DEFAULT_DIAL_SPACING_Y;
 
         // Button configuration
-        int button_width;
-        int button_height;
-        int button_spacing;
+        int button_width = SynthConstants::DEFAULT_BUTTON_WIDTH;
+        int button_height = SynthConstants::DEFAULT_BUTTON_HEIGHT;
+        int button_spacing = SynthConstants::DEFAULT_BUTTON_SPACING;
 
         // General layout
-        int margin_x;
-        int margin_y;
-        int grid_cols;
-        int status_height;
+        int margin_x = SynthConstants::DEFAULT_MARGIN_X;
+        int margin_y = SynthConstants::DEFAULT_MARGIN_Y;
+        int grid_cols = SynthConstants::DEFAULT_GRID_COLS;
+        int status_height = SynthConstants::DEFAULT_STATUS_HEIGHT;
 
-        // Font sizes
-        int title_font_size;
-        int label_font_size;
-        int value_font_size;
+        // Font sizes (can be set per screen size)
+        int title_font_size = 24;
+        int label_font_size = 16;
+        int value_font_size = 16;
     };
 
 private:
