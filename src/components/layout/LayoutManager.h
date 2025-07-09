@@ -1,14 +1,8 @@
-    enum class ScreenSize {
-        SMALL = 0,
-        MEDIUM = 1,
-        LARGE = 2
-    };
-#include "../../include/Constants.h"
-
 
 #pragma once
 
-#include "lvgl.h"
+#include "Constants.h"
+#include <lvgl.h>
 
 class LayoutManager {
 public:

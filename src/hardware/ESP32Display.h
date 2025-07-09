@@ -2,7 +2,7 @@
 #pragma once
 
 #include <lvgl.h>
-#include "LGFX_ST7796S.h"
+#include "./LGFX_ST7796S.h"
 
 class ESP32Display {
 public:

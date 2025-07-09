@@ -2,6 +2,7 @@
 
 #include "lvgl.h"
 
+
 // Forward declare all fonts you use (adjust as needed)
 extern lv_font_t PressStart2P_6;
 extern lv_font_t PressStart2P_8;

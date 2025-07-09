@@ -1,7 +1,7 @@
 // ==============================================
 // MIDI DIAL WIDGET CLASS - 8-Bit Style
 // ==============================================
-#include "MidiDial.h"
+#include "components/MidiDial.h"
 
 
 #include "../../include/FontConfig.h"

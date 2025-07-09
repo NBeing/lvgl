@@ -2,7 +2,7 @@
 #include "ParameterControl.h"
 #include <unordered_map>
 #include <iostream>
-#include "../../include/FontConfig.h"
+#include "FontConfig.h"
 
 // ============================================================================
 // ParameterControl Base Class Implementation

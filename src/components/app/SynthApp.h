@@ -3,12 +3,13 @@
 #include <lvgl.h>
 #include <memory>
 #include <functional>
-#include "../ParameterControl.h"
-#include "../DialControl.h"
-#include "../ParameterBinder.h"
-#include "../CommandManager.h"
-#include "../ButtonControl.h"
-#include "../../hardware/MidiHandler.h"
+
+#include "components/controls/ParameterControl.h"
+#include "components/controls/DialControl.h"
+#include "components/parameter/ParameterBinder.h"
+#include "components/parameter/CommandManager.h"
+#include "components/controls/ButtonControl.h"
+#include "hardware/MidiHandler.h"
 
 #if defined(ESP32_BUILD)
     #include "../../hardware/ESP32Display.h"

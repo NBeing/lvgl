@@ -4,15 +4,14 @@
 lv_obj_t* root_container = nullptr;
 // Update SynthApp to use the modular display driver
 #include "SynthApp.h"
-#include "../ParameterControl.h"
-#include "../ParameterBinder.h"
-#include "../CommandManager.h"
-#include "../ButtonControl.h"
-#include "../DialControl.h"
-
-#include "../LayoutManager.h"
-#include "../../../include/FontConfig.h"
-#include "../../../include/Constants.h"
+#include "components/controls/ParameterControl.h"
+#include "components/parameter/ParameterBinder.h"
+#include "components/parameter/CommandManager.h"
+#include "components/controls/ButtonControl.h"
+#include "components/controls/DialControl.h"
+#include "components/layout/LayoutManager.h"
+#include "FontConfig.h"
+#include "Constants.h"
 #include <iostream>
 #include <chrono>
 #include <thread>

@@ -2,7 +2,7 @@
 #if defined(ESP32_BUILD)  // Only compile for ESP32
 
 
-#include "ESP32Display.h"
+#include "hardware/ESP32Display.h"
 #include <iostream>
 #include <algorithm>
 

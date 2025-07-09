@@ -1,12 +1,10 @@
 
 #include "ButtonControl.h"
-#include "Command.h"
-#include "CommandManager.h"
-#include "lvgl.h"
+#include "components/parameter/Command.h"
+#include "components/parameter/CommandManager.h"
+#include <lvgl.h>
 #include <iostream>
-
-
-#include "../../include/FontConfig.h"
+#include "FontConfig.h"
 
 ButtonControl::ButtonControl(lv_obj_t* parent, int x, int y, int width, int height)
     : ParameterControl()

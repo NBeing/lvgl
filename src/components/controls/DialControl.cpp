@@ -3,7 +3,7 @@
 
 #include "DialControl.h"
 #include "ParameterControl.h"
-#include "../../include/FontConfig.h"
+#include "FontConfig.h"
 #include <lvgl.h>
 
 // Static map for dial control callbacks

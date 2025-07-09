@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Parameter.h"
+#include "components/parameter/Parameter.h"
 #include <lvgl.h>
 #include <functional>
 #include <memory>

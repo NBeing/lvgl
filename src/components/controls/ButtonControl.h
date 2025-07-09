@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ParameterControl.h"
-#include "lvgl.h"
+#include "components/controls/ParameterControl.h"
+#include <lvgl.h>
 #include <memory>
 #include <functional>
 
