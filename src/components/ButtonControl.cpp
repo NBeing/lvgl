@@ -48,7 +48,7 @@ void ButtonControl::createButton(lv_obj_t* parent, int x, int y, int width, int 
     label_ = lv_label_create(button_);
     lv_label_set_text(label_, "BTN");
     lv_obj_set_style_text_color(label_, lv_color_hex(0xFFFFFF), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(label_, FontA.lg, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(label_, FontA.small, LV_STATE_DEFAULT);
     lv_obj_center(label_);
     
     // Set up event callback
@@ -149,7 +149,7 @@ void ButtonControl::setMode(ButtonMode mode) {
 void ButtonControl::setText(const std::string& text) {
     if (label_) {
         lv_label_set_text(label_, text.c_str());
-        lv_obj_set_style_text_font(label_, FontA.lg, LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(label_, FontA.small, LV_STATE_DEFAULT);
     }
 }
 

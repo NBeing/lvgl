@@ -69,6 +69,16 @@ namespace SynthConstants {
 
     // --- UI Layout ---
     namespace Layout {
+        // UI scaling factor for ESP32 vs Desktop
+        #if defined(ESP32_BUILD)
+          inline constexpr float UI_SCALE = 1.0f;
+        #else
+          inline constexpr float UI_SCALE = 1.0f;
+        #endif
+
+        // Set this to 0 (SMALL), 1 (MEDIUM), 2 (LARGE) to force a screen size, or -1 to auto-detect
+        inline constexpr int USER_SCREEN_SIZE_OVERRIDE = 0; // -1 = auto, 0 = SMALL, 1 = MEDIUM, 2 = LARGE
+        
         inline constexpr int TITLE_Y_SMALL = 60;
         inline constexpr int TITLE_Y_LARGE = 70;
         inline constexpr int HELP_LABEL_Y_OFFSET = 25;
@@ -82,6 +92,22 @@ namespace SynthConstants {
         inline constexpr int STATUS_BORDER_WIDTH = 1;
         inline constexpr int STATUS_RADIUS = 4;
         inline constexpr int STATUS_BG_OPA = 0xFF;
+
+        // --- LEGACY/ABSOLUTE LAYOUT CONSTANTS TO REMOVE (for refactor) ---
+        // These are kept for compatibility but should be removed as flex layouts are adopted everywhere.
+        // Search for usages and refactor to use container-relative/flex-based layout only.
+        // (Do not add new code using these!)
+        inline constexpr int DEFAULT_DIAL_SIZE = 80;
+        inline constexpr int DEFAULT_DIAL_SPACING_X = 120;
+        inline constexpr int DEFAULT_DIAL_SPACING_Y = 120;
+        inline constexpr int DEFAULT_MARGIN_X = 50;
+        inline constexpr int DEFAULT_MARGIN_Y = 50;
+        inline constexpr int DEFAULT_BUTTON_WIDTH = 100;
+        inline constexpr int DEFAULT_BUTTON_HEIGHT = 40;
+        inline constexpr int DEFAULT_BUTTON_SPACING = 20;
+        inline constexpr int DEFAULT_STATUS_HEIGHT = 32;
+        inline constexpr int DEFAULT_GRID_COLS = 3;
+        inline constexpr int DEFAULT_GRID_ROWS = 2;
     }
 
     // --- Buffer sizes ---
@@ -89,17 +115,4 @@ namespace SynthConstants {
         inline constexpr int STATUS = 100;
         inline constexpr int STATUS_UNDO_REDO = 150;
     }
-
-    // --- Legacy layout constants (for compatibility, to be refactored) ---
-    inline constexpr int DEFAULT_DIAL_SIZE = 80;
-    inline constexpr int DEFAULT_DIAL_SPACING_X = 120;
-    inline constexpr int DEFAULT_DIAL_SPACING_Y = 120;
-    inline constexpr int DEFAULT_MARGIN_X = 50;
-    inline constexpr int DEFAULT_MARGIN_Y = 50;
-    inline constexpr int DEFAULT_BUTTON_WIDTH = 100;
-    inline constexpr int DEFAULT_BUTTON_HEIGHT = 40;
-    inline constexpr int DEFAULT_BUTTON_SPACING = 20;
-    inline constexpr int DEFAULT_STATUS_HEIGHT = 32;
-    inline constexpr int DEFAULT_GRID_COLS = 3;
-    inline constexpr int DEFAULT_GRID_ROWS = 2;
 }

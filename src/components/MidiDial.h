@@ -20,6 +20,7 @@ public:
     lv_obj_t* getObject();
     int getMidiCC() const;
     void setMidiCC(int cc_number);
+    lv_obj_t* getLvObj() const;
 
 private:
     lv_obj_t* container_;
@@ -38,4 +39,5 @@ private:
     void setupStyling();
     static void click_event_cb(lv_event_t* e);
     static void arc_event_cb(lv_event_t* e);
+    
 };

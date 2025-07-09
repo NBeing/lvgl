@@ -1,11 +1,11 @@
+    enum class ScreenSize {
+        SMALL = 0,
+        MEDIUM = 1,
+        LARGE = 2
+    };
 #include "../../include/Constants.h"
 
-// UI scaling factor for ESP32 vs Desktop
-#if defined(ESP32_BUILD)
-#define UI_SCALE 1.0f
-#else
-#define UI_SCALE 2.0f
-#endif
+
 #pragma once
 
 #include "lvgl.h"
@@ -20,20 +20,20 @@ public:
 
     struct LayoutConfig {
         // Dial configuration
-        int dial_size = SynthConstants::DEFAULT_DIAL_SIZE;
-        int dial_spacing_x = SynthConstants::DEFAULT_DIAL_SPACING_X;
-        int dial_spacing_y = SynthConstants::DEFAULT_DIAL_SPACING_Y;
+        int dial_size = SynthConstants::Layout::DEFAULT_DIAL_SIZE;
+        int dial_spacing_x = SynthConstants::Layout::DEFAULT_DIAL_SPACING_X;
+        int dial_spacing_y = SynthConstants::Layout::DEFAULT_DIAL_SPACING_Y;
 
         // Button configuration
-        int button_width = SynthConstants::DEFAULT_BUTTON_WIDTH;
-        int button_height = SynthConstants::DEFAULT_BUTTON_HEIGHT;
-        int button_spacing = SynthConstants::DEFAULT_BUTTON_SPACING;
+        int button_width = SynthConstants::Layout::DEFAULT_BUTTON_WIDTH;
+        int button_height = SynthConstants::Layout::DEFAULT_BUTTON_HEIGHT;
+        int button_spacing = SynthConstants::Layout::DEFAULT_BUTTON_SPACING;
 
         // General layout
-        int margin_x = SynthConstants::DEFAULT_MARGIN_X;
-        int margin_y = SynthConstants::DEFAULT_MARGIN_Y;
-        int grid_cols = SynthConstants::DEFAULT_GRID_COLS;
-        int status_height = SynthConstants::DEFAULT_STATUS_HEIGHT;
+        int margin_x = SynthConstants::Layout::DEFAULT_MARGIN_X;
+        int margin_y = SynthConstants::Layout::DEFAULT_MARGIN_Y;
+        int grid_cols = SynthConstants::Layout::DEFAULT_GRID_COLS;
+        int status_height = SynthConstants::Layout::DEFAULT_STATUS_HEIGHT;
 
         // Font sizes (can be set per screen size)
         int title_font_size = 24;

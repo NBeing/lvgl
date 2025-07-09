@@ -19,7 +19,7 @@ MidiDial::MidiDial(lv_obj_t* parent, const char* label, int x, int y)
 {
     // Create container object
     container_ = lv_obj_create(parent);
-    lv_obj_set_size(container_, 80, 80);
+    lv_obj_set_size(container_, 20, 20);
     lv_obj_set_pos(container_, x, y);
     
     // Store mapping for static callbacks
@@ -29,7 +29,7 @@ MidiDial::MidiDial(lv_obj_t* parent, const char* label, int x, int y)
     name_label_ = lv_label_create(container_);
     lv_label_set_text(name_label_, label);
     lv_obj_set_style_text_color(name_label_, lv_color_hex(0xFFCCCCCC), 0);
-    lv_obj_set_style_text_font(name_label_, FontA.med, 0);
+    lv_obj_set_style_text_font(name_label_, FontA.small, 0);
     lv_obj_align(name_label_, LV_ALIGN_TOP_MID, 0, 2);
     
     // Create arc display using LVGL's built-in arc widget
@@ -57,7 +57,7 @@ MidiDial::MidiDial(lv_obj_t* parent, const char* label, int x, int y)
     value_label_ = lv_label_create(container_);
     lv_label_set_text(value_label_, "000");
     lv_obj_set_style_text_color(value_label_, arc_color_, 0);
-    lv_obj_set_style_text_font(value_label_, FontA.lg, 0);
+    lv_obj_set_style_text_font(value_label_, FontA.small, 0);
     lv_obj_align(value_label_, LV_ALIGN_BOTTOM_MID, 0, -2);
     
     // Set up event handlers for click interaction
@@ -72,8 +72,17 @@ MidiDial::MidiDial(lv_obj_t* parent, const char* label, int x, int y)
     updateDisplay();
     
     std::cout << "Created MIDI dial: " << label << std::endl;
+        int w = lv_obj_get_width(container_);
+    int h = lv_obj_get_height(container_);
+    std::cout << "MidiDial container actual size: " << w << "x" << h << std::endl;
+        if (lv_obj_get_parent(container_)) {
+        int pw = lv_obj_get_width(lv_obj_get_parent(container_));
+        int ph = lv_obj_get_height(lv_obj_get_parent(container_));
+        std::cout << "MidiDial parent actual size: " << pw << "x" << ph << std::endl;
+    }
 }
 
+lv_obj_t* MidiDial::getLvObj() const { return container_; }
 int MidiDial::getValue() const { return current_value_; }
 void MidiDial::setMidiCC(int cc_number) { midi_cc_ = cc_number; }
 int MidiDial::getMidiCC() const { return midi_cc_; }

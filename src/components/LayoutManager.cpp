@@ -1,6 +1,8 @@
+#include "../../include/Constants.h"
 #include "LayoutManager.h"
 #include <algorithm>
 #include <cstdio>
+
 
 LayoutManager::ScreenSize LayoutManager::screen_size_ = ScreenSize::MEDIUM;
 LayoutManager::LayoutConfig LayoutManager::current_config_ = {};
@@ -16,12 +18,6 @@ void LayoutManager::initialize() {
     current_config_ = createConfigForScreen(screen_size_);
     initialized_ = true;
 
-#if defined(SYNTHAPP_DEBUG_UI_CHECKS)
-    printf("LayoutManager: Screen %dx%d classified as %s\n",
-           screen_width, screen_height,
-           (screen_size_ == ScreenSize::SMALL) ? "SMALL" :
-           (screen_size_ == ScreenSize::MEDIUM) ? "MEDIUM" : "LARGE");
-#endif
 }
 
 const LayoutManager::LayoutConfig& LayoutManager::getConfig() {
@@ -34,7 +30,11 @@ LayoutManager::ScreenSize LayoutManager::getScreenSize() {
     return screen_size_;
 }
 
+
 LayoutManager::ScreenSize LayoutManager::classifyScreen(int width, int height) {
+    if (SynthConstants::Layout::USER_SCREEN_SIZE_OVERRIDE >= 0 && SynthConstants::Layout::USER_SCREEN_SIZE_OVERRIDE <= 2) {
+        return static_cast<ScreenSize>(SynthConstants::Layout::USER_SCREEN_SIZE_OVERRIDE);
+    }
     int min_dim = std::min(width, height);
     if (min_dim <= 320) {
         return ScreenSize::SMALL;
@@ -105,7 +105,7 @@ void LayoutManager::getGridPosition(int grid_x, int grid_y, int* out_x, int* out
 
 int LayoutManager::scaleSize(int base_size) {
     // Always apply UI_SCALE for desktop/ESP32 parity
-    return static_cast<int>(base_size * UI_SCALE);
+    return static_cast<int>(base_size * SynthConstants::Layout::UI_SCALE);
 }
 
 void LayoutManager::getContentArea(int* width, int* height) {

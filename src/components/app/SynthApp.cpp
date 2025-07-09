@@ -4,11 +4,12 @@
 lv_obj_t* root_container = nullptr;
 // Update SynthApp to use the modular display driver
 #include "SynthApp.h"
-#include "../MidiDial.h"
 #include "../ParameterControl.h"
 #include "../ParameterBinder.h"
 #include "../CommandManager.h"
 #include "../ButtonControl.h"
+#include "../DialControl.h"
+
 #include "../LayoutManager.h"
 #include "../../../include/FontConfig.h"
 #include "../../../include/Constants.h"
@@ -146,63 +147,327 @@ void SynthApp::createUI() {
               << ", spacing=" << config.dial_spacing_x << "x" << config.dial_spacing_y
               << ", margins=" << config.margin_x << "x" << config.margin_y << std::endl;
 
+    lv_obj_set_scrollbar_mode(lv_layer_top(), LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_scrollbar_mode(lv_layer_sys(), LV_SCROLLBAR_MODE_OFF);
 
-    // Create a fixed-size root container for pixel-perfect ESP32 parity
+    // Create a fixed-size app container centered in the screen for pixel-perfect ESP32 parity
+    lv_obj_t* app_container = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(app_container, SynthConstants::ESP32_SCREEN_WIDTH, SynthConstants::ESP32_SCREEN_HEIGHT);
+    lv_obj_center(app_container);
+    lv_obj_set_style_bg_color(app_container, lv_color_hex(SynthConstants::Color::BG), 0);
+    lv_obj_set_style_border_color(app_container, lv_color_hex(0xFFFFFF), 0); // Debug border
+    lv_obj_set_style_border_width(app_container, 2, 0);
+    lv_obj_set_flex_flow(app_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(app_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_clear_flag(app_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(app_container, LV_SCROLLBAR_MODE_OFF);
+
+    // Use app_container as the new root_container for all UI elements
     extern lv_obj_t* root_container;
-    root_container = lv_obj_create(NULL);
-    lv_obj_set_size(root_container, SynthConstants::ESP32_SCREEN_WIDTH, SynthConstants::ESP32_SCREEN_HEIGHT);
-    lv_obj_center(root_container); // Center in the window (desktop)
-    lv_obj_set_style_bg_color(root_container, lv_color_hex(SynthConstants::Color::BG), 0);
-    lv_scr_load(root_container);
-    // Add a transparent background object to catch and debug touch events
-    lv_obj_t* debug_bg = lv_obj_create(root_container);
-    lv_obj_set_size(debug_bg, SynthConstants::ESP32_SCREEN_WIDTH, SynthConstants::ESP32_SCREEN_HEIGHT);
-    lv_obj_set_style_bg_opa(debug_bg, LV_OPA_TRANSP, 0);
-    lv_obj_clear_flag(debug_bg, LV_OBJ_FLAG_CLICKABLE); // Don't block events
-    lv_obj_move_background(debug_bg);
-    lv_obj_add_event_cb(debug_bg, [](lv_event_t* e) {
-        lv_point_t p;
-        lv_indev_get_point(lv_indev_get_act(), &p);
-        std::cout << "[DEBUG] Touch event at (" << p.x << ", " << p.y << ") code=" << lv_event_get_code(e) << std::endl;
-    }, LV_EVENT_ALL, NULL);
+    root_container = app_container;
+    lv_scr_load(lv_scr_act()); // Show the screen (app_container is child of screen)
 
-    // Create title with responsive positioning and font
+    // --- FLEX CHILD ORDER: title, help, content, undo/redo, status ---
+    // 1. Title label
     lv_obj_t* title = lv_label_create(root_container);
-    if (!title) {
-#if SYNTHAPP_DEBUG_UI_CHECKS
-        std::cerr << "[UI-ERR] Failed to create title label!" << std::endl;
-#endif
-        return;
-    }
     lv_label_set_text(title, SynthConstants::Text::TITLE);
     lv_obj_set_style_text_color(title, lv_color_hex(SynthConstants::Color::TITLE), 0);
-    lv_obj_set_style_text_font(title, FontA.lg, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, config.margin_y / 2);
+    lv_obj_set_style_text_font(title, FontA.small, 0);
+    // No align! Let flex layout handle it
 
-    // Create help message label (only on larger screens)
+    // 2. Help label (if not small screen)
     if (LayoutManager::getScreenSize() != LayoutManager::ScreenSize::SMALL) {
         lv_obj_t* help_label = lv_label_create(root_container);
-        if (!help_label) {
-#if SYNTHAPP_DEBUG_UI_CHECKS
-            std::cerr << "[UI-ERR] Failed to create help label!" << std::endl;
-#endif
-        } else {
-            lv_label_set_text(help_label, SynthConstants::Text::HELP);
-            lv_obj_set_style_text_color(help_label, lv_color_hex(SynthConstants::Color::HELP), 0);
-            lv_obj_set_style_text_font(help_label, FontA.med, 0);
-            lv_obj_align(help_label, LV_ALIGN_TOP_MID, 0, config.margin_y / 2 + SynthConstants::Layout::HELP_LABEL_Y_OFFSET);
-        }
+        lv_label_set_text(help_label, SynthConstants::Text::HELP);
+        lv_obj_set_style_text_color(help_label, lv_color_hex(SynthConstants::Color::HELP), 0);
+        lv_obj_set_style_text_font(help_label, FontA.med, 0);
     }
 
-    // Create NEW parameter-aware dials
-    createParameterDials();
+    // 3. Main content row: dials (flex row) + button column (flex col)
+    lv_obj_t* content_row = lv_obj_create(root_container);
+    lv_obj_set_size(content_row, lv_pct(100), lv_pct(65));
+    lv_obj_set_flex_flow(content_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(content_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_border_color(content_row, lv_color_hex(0xFF00FF), 0); // Debug border
+    lv_obj_set_style_border_width(content_row, 1, 0);
+    lv_obj_set_style_pad_all(content_row, 4, 0);
+    // Disable scrollbars for this container (unless scrolling is needed)
+    lv_obj_clear_flag(content_row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(content_row, LV_SCROLLBAR_MODE_OFF);
 
-    // Create NEW button controls
-    createButtonControls();
+    // Dials flex row
+    lv_obj_t* dials_row = lv_obj_create(content_row);
+    lv_obj_set_flex_flow(dials_row, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_flex_align(dials_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_border_color(dials_row, lv_color_hex(0x00FFFF), 0); // Debug border
+    lv_obj_set_style_border_width(dials_row, 1, 0);
+    lv_obj_set_style_pad_all(dials_row, 2, 0);
+    lv_obj_set_size(dials_row, lv_pct(70), lv_pct(100));
+    // Disable scrollbars for this container (unless scrolling is needed)
+    lv_obj_clear_flag(dials_row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(dials_row, LV_SCROLLBAR_MODE_OFF);
 
-    // Create undo/redo controls
-    createUndoRedoControls();
+    // Button column (flex col)
+    lv_obj_t* button_col = lv_obj_create(content_row);
+    lv_obj_set_flex_flow(button_col, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(button_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_border_color(button_col, lv_color_hex(0xFF8800), 0); // Debug border
+    lv_obj_set_style_border_width(button_col, 1, 0);
+    lv_obj_set_style_pad_all(button_col, 2, 0);
+    lv_obj_set_size(button_col, lv_pct(30), lv_pct(100));
+    // Disable scrollbars for this container (unless scrolling is needed)
+    lv_obj_clear_flag(button_col, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(button_col, LV_SCROLLBAR_MODE_OFF);
+
+    // Store for use in child creation
+    this->dials_row_ = dials_row;
+    this->button_col_ = button_col;
+
+    // 4. Undo/redo and simulate controls (bottom of root container)
+    createParameterDialsFlex();
+    createButtonControlsFlex();
+    createUndoRedoControlsFlex();
+
+    // 5. Status area (bottom)
+    createStatusAreaFlex();
+    // ...all UI creation now handled by flex-based functions above...
 }
+
+void SynthApp::createParameterDialsFlex() {
+    // Use dials_row_ as parent
+    const auto& config = LayoutManager::getConfig();
+    lv_obj_t* parent = this->dials_row_;
+    // Create dials as children of dials_row_ (flex row)
+    std::vector<std::pair<std::shared_ptr<DialControl>*, std::string>> dials = {
+        {&cutoff_dial_, "Filter 1 Cutoff"},
+        {&resonance_dial_, "Filter 1 Resonance"},
+        {&volume_dial_, "Master Volume"},
+        {&attack_dial_, "ENV 1 Attack"},
+        {&release_dial_, "ENV 1 Release"},
+        {&lfo_rate_dial_, "LFO 1 Rate"}
+    };
+    // Store dial objects and names for post-layout debug logging
+    struct DialDebugInfo {
+        lv_obj_t* obj;
+        std::string name;
+    };
+    std::vector<DialDebugInfo> dial_debug_infos;
+    for (auto& d : dials) {
+        *(d.first) = std::make_shared<DialControl>(parent, 0, 0);
+        auto param = parameter_binder_->findParameterByName(d.second);
+        if (param) {
+            (*(d.first))->bindParameter(param);
+        }
+        // Set dial size and enforce fixed size in flex layout
+        (*(d.first))->setDialSize(config.dial_size);
+        (*(d.first))->setSize(config.dial_size + 20, config.dial_size + 30);
+        // Enforce fixed size for flex: get the root LVGL object and set min/max/flex grow
+        if ((*(d.first))->getObject()) {
+            lv_obj_t* dial_obj = (*(d.first))->getObject();
+            int w = config.dial_size + 20;
+            int h = config.dial_size + 30;
+            lv_obj_set_style_min_width(dial_obj, w, 0);
+            lv_obj_set_style_max_width(dial_obj, w, 0);
+            lv_obj_set_style_min_height(dial_obj, h, 0);
+            lv_obj_set_style_max_height(dial_obj, h, 0);
+            lv_obj_set_flex_grow(dial_obj, 0);
+            // Store for post-layout debug logging
+            dial_debug_infos.push_back({dial_obj, d.second});
+        }
+    }
+    // Defer debug logging until after LVGL layout is performed
+    struct DebugInfo {
+        std::vector<DialDebugInfo> dials;
+        lv_obj_t* parent;
+        int tries = 0;
+    };
+    DebugInfo* dbg = new DebugInfo{dial_debug_infos, parent, 0};
+    lv_timer_t* log_timer = lv_timer_create_basic();
+    lv_timer_set_period(log_timer, 50); // 50ms poll interval
+    lv_timer_set_repeat_count(log_timer, -1); // repeat until we stop it
+    lv_timer_set_user_data(log_timer, dbg);
+    lv_timer_set_cb(log_timer, [](lv_timer_t* timer) {
+        DebugInfo* dbg = static_cast<DebugInfo*>(lv_timer_get_user_data(timer));
+        bool all_ready = true;
+        for (const auto& info : dbg->dials) {
+            int w = lv_obj_get_width(info.obj);
+            int h = lv_obj_get_height(info.obj);
+            if (w == 0 || h == 0) all_ready = false;
+        }
+        int flex_w = lv_obj_get_width(dbg->parent);
+        int flex_h = lv_obj_get_height(dbg->parent);
+        if (flex_w == 0 || flex_h == 0) all_ready = false;
+        dbg->tries++;
+        if (all_ready || dbg->tries > 10) { // 10*50ms = 500ms max
+            for (const auto& info : dbg->dials) {
+                int dial_actual_w = lv_obj_get_width(info.obj);
+                int dial_actual_h = lv_obj_get_height(info.obj);
+                lv_obj_t* parent_obj = lv_obj_get_parent(info.obj);
+                int parent_actual_w = parent_obj ? lv_obj_get_width(parent_obj) : -1;
+                int parent_actual_h = parent_obj ? lv_obj_get_height(parent_obj) : -1;
+                std::cout << "[DEBUG] (POST-LAYOUT) Dial '" << info.name << "' size: " << dial_actual_w << "x" << dial_actual_h
+                          << ", parent flex container size: " << parent_actual_w << "x" << parent_actual_h << std::endl;
+            }
+            std::cout << "[DEBUG] (POST-LAYOUT) Dials flex container total size: " << flex_w << "x" << flex_h << std::endl;
+            delete dbg;
+            lv_timer_del(timer);
+        }
+    });
+}
+
+void SynthApp::createButtonControlsFlex() {
+    // Use button_col_ as parent
+    const auto& config = LayoutManager::getConfig();
+    lv_obj_t* parent = this->button_col_;
+    filter_enable_btn_ = std::make_shared<ButtonControl>(parent, 0, 0, config.button_width, config.button_height);
+    filter_enable_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
+    filter_enable_btn_->setText(SynthConstants::Text::BTN_FILTER);
+    filter_enable_btn_->setToggleColors(lv_color_hex(SynthConstants::Color::BTN_FILTER_OFF), lv_color_hex(SynthConstants::Color::BTN_FILTER_ON));
+    filter_enable_btn_->setToggleValues(SynthConstants::Midi::BTN_TOGGLE_OFF, SynthConstants::Midi::BTN_TOGGLE_ON);
+    filter_enable_btn_->setSize(config.button_width, config.button_height);
+
+    lfo_sync_btn_ = std::make_shared<ButtonControl>(parent, 0, 0, config.button_width, config.button_height);
+    lfo_sync_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
+    lfo_sync_btn_->setText(SynthConstants::Text::BTN_LFO);
+    lfo_sync_btn_->setToggleColors(lv_color_hex(SynthConstants::Color::BTN_LFO_OFF), lv_color_hex(SynthConstants::Color::BTN_LFO_ON));
+    lfo_sync_btn_->setToggleValues(SynthConstants::Midi::BTN_TOGGLE_OFF, SynthConstants::Midi::BTN_TOGGLE_ON);
+    lfo_sync_btn_->setSize(config.button_width, config.button_height);
+
+    trigger_btn_ = std::make_shared<ButtonControl>(parent, 0, 0, config.button_width, config.button_height);
+    trigger_btn_->setMode(ButtonControl::ButtonMode::TRIGGER);
+    trigger_btn_->setText(SynthConstants::Text::BTN_TRIGGER);
+    trigger_btn_->setColors(lv_color_hex(SynthConstants::Color::BTN_TRIGGER_OFF), lv_color_hex(SynthConstants::Color::BTN_TRIGGER_ON));
+    trigger_btn_->setTriggerValue(SynthConstants::Midi::BTN_TRIGGER_ON, SynthConstants::Midi::BTN_TRIGGER_OFF);
+    trigger_btn_->setSize(config.button_width, config.button_height);
+
+    // Bind parameters if available
+    auto filter_param = parameter_binder_->findParameterByName("Filter 1 Enable");
+    if (filter_param) filter_enable_btn_->bindParameter(filter_param);
+    auto lfo_param = parameter_binder_->findParameterByName("LFO 1 Sync");
+    if (lfo_param) lfo_sync_btn_->bindParameter(lfo_param);
+    auto trigger_param = parameter_binder_->findParameterByName("Trigger");
+    if (trigger_param) trigger_btn_->bindParameter(trigger_param);
+
+    // Set up callbacks for all buttons
+    filter_enable_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+        if (midi_handler_->isConnected() && param) {
+            midi_handler_->sendControlChange(SynthConstants::Midi::CHANNEL, param->getCCNumber(), value);
+        }
+        std::cout << "Filter Enable: " << (value > 63 ? "ON" : "OFF") << std::endl;
+    });
+    lfo_sync_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+        if (midi_handler_->isConnected() && param) {
+            midi_handler_->sendControlChange(SynthConstants::Midi::CHANNEL, param->getCCNumber(), value);
+        }
+        std::cout << "LFO Sync: " << (value > 63 ? "ON" : "OFF") << std::endl;
+    });
+    trigger_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+        if (midi_handler_->isConnected() && param) {
+            midi_handler_->sendControlChange(SynthConstants::Midi::CHANNEL, param->getCCNumber(), value);
+        }
+        std::cout << "Trigger: " << static_cast<int>(value) << std::endl;
+    });
+}
+
+void SynthApp::createUndoRedoControlsFlex() {
+    // Place undo/redo and simulate buttons in a flex row at the bottom of root_container
+    lv_obj_t* bottom_row = lv_obj_create(root_container);
+    lv_obj_set_flex_flow(bottom_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(bottom_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_border_color(bottom_row, lv_color_hex(0x00FF00), 0); // Debug border
+    lv_obj_set_style_border_width(bottom_row, 1, 0);
+    lv_obj_set_style_pad_all(bottom_row, 2, 0);
+    lv_obj_set_size(bottom_row, lv_pct(100), lv_pct(10));
+    // Disable scrollbars for this container (unless scrolling is needed)
+    lv_obj_clear_flag(bottom_row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(bottom_row, LV_SCROLLBAR_MODE_OFF);
+
+    const auto& config = LayoutManager::getConfig();
+    // Undo button
+    undo_btn_ = lv_btn_create(bottom_row);
+    lv_obj_set_size(undo_btn_, config.button_width, config.button_height);
+    lv_obj_set_style_bg_color(undo_btn_, lv_color_hex(SynthConstants::Color::BTN_UNDO_BG), 0);
+    lv_obj_set_style_border_color(undo_btn_, lv_color_hex(SynthConstants::Color::BTN_UNDO_BORDER), 0);
+    lv_obj_set_style_border_width(undo_btn_, SynthConstants::Layout::STATUS_BORDER_WIDTH, 0);
+    lv_obj_set_style_radius(undo_btn_, SynthConstants::Layout::STATUS_RADIUS, 0);
+    lv_obj_t* undo_label = lv_label_create(undo_btn_);
+    lv_label_set_text(undo_label, SynthConstants::Text::BTN_UNDO);
+    lv_obj_set_style_text_color(undo_label, lv_color_hex(SynthConstants::Color::HELP), 0);
+    lv_obj_set_style_text_font(undo_label, FontA.small, 0);
+    lv_obj_center(undo_label);
+    undo_label_ = undo_label;
+    lv_obj_add_event_cb(undo_btn_, [](lv_event_t* e) {
+        SynthApp* app = static_cast<SynthApp*>(lv_event_get_user_data(e));
+        app->handleUndo();
+    }, LV_EVENT_CLICKED, this);
+
+    // Redo button
+    redo_btn_ = lv_btn_create(bottom_row);
+    lv_obj_set_size(redo_btn_, config.button_width, config.button_height);
+    lv_obj_set_style_bg_color(redo_btn_, lv_color_hex(SynthConstants::Color::BTN_REDO_BG), 0);
+    lv_obj_set_style_border_color(redo_btn_, lv_color_hex(SynthConstants::Color::BTN_REDO_BORDER), 0);
+    lv_obj_set_style_border_width(redo_btn_, SynthConstants::Layout::STATUS_BORDER_WIDTH, 0);
+    lv_obj_set_style_radius(redo_btn_, SynthConstants::Layout::STATUS_RADIUS, 0);
+    lv_obj_t* redo_label = lv_label_create(redo_btn_);
+    lv_label_set_text(redo_label, SynthConstants::Text::BTN_REDO);
+    lv_obj_set_style_text_color(redo_label, lv_color_hex(SynthConstants::Color::HELP), 0);
+    lv_obj_set_style_text_font(redo_label, FontA.small, 0);
+    lv_obj_center(redo_label);
+    redo_label_ = redo_label;
+    lv_obj_add_event_cb(redo_btn_, [](lv_event_t* e) {
+        SynthApp* app = static_cast<SynthApp*>(lv_event_get_user_data(e));
+        app->handleRedo();
+    }, LV_EVENT_CLICKED, this);
+
+    // Simulate button (always visible)
+    lv_obj_t* sim_button = lv_btn_create(bottom_row);
+    lv_obj_set_size(sim_button, LayoutManager::scaleSize(SynthConstants::Layout::SIM_BTN_WIDTH), config.button_height);
+    lv_obj_set_style_bg_color(sim_button, lv_color_hex(SynthConstants::Color::SIM_BTN_BG), 0);
+    lv_obj_set_style_border_color(sim_button, lv_color_hex(SynthConstants::Color::SIM_BTN_BORDER), 0);
+    lv_obj_set_style_border_width(sim_button, 2, 0);
+    lv_obj_set_style_radius(sim_button, SynthConstants::Layout::STATUS_RADIUS, 0);
+    lv_obj_t* btn_label = lv_label_create(sim_button);
+    lv_label_set_text(btn_label, SynthConstants::Text::BTN_SIMULATE);
+    lv_obj_set_style_text_color(btn_label, lv_color_hex(SynthConstants::Color::SIM_BTN_TEXT), 0);
+    lv_obj_set_style_text_font(btn_label, FontA.small, 0);
+    lv_obj_center(btn_label);
+    lv_obj_add_event_cb(sim_button, [](lv_event_t* e) {
+        SynthApp* app = static_cast<SynthApp*>(lv_event_get_user_data(e));
+        app->simulateMidiCC();
+    }, LV_EVENT_CLICKED, this);
+
+    updateUndoRedoButtons();
+}
+
+void SynthApp::createStatusAreaFlex() {
+    // Status area at the very bottom of root_container
+    lv_obj_t* status_area = lv_obj_create(root_container);
+    lv_obj_set_size(status_area, lv_pct(100), lv_pct(10));
+    lv_obj_set_style_bg_color(status_area, lv_color_hex(SynthConstants::Color::STATUS_BG), 0);
+    lv_obj_set_style_border_color(status_area, lv_color_hex(SynthConstants::Color::STATUS_BORDER), 0);
+    lv_obj_set_style_border_width(status_area, SynthConstants::Layout::STATUS_BORDER_WIDTH, 0);
+    lv_obj_set_style_radius(status_area, SynthConstants::Layout::STATUS_RADIUS, 0);
+    lv_obj_set_style_pad_all(status_area, 4, 0);
+    lv_obj_clear_flag(status_area, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_move_background(status_area);
+    // Disable scrollbars for this container (unless scrolling is needed)
+    lv_obj_clear_flag(status_area, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(status_area, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_flex_flow(status_area, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(status_area, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t* status_label = lv_label_create(status_area);
+    if (LayoutManager::getScreenSize() == LayoutManager::ScreenSize::SMALL) {
+        lv_label_set_text(status_label, SynthConstants::Text::STATUS_READY);
+    } else {
+        lv_label_set_text(status_label, SynthConstants::Text::STATUS_READY_LG);
+    }
+    lv_obj_set_style_text_color(status_label, lv_color_hex(SynthConstants::Color::STATUS), 0);
+    lv_obj_set_style_text_font(status_label, FontA.small, 0);
+    lv_obj_center(status_label);
+    status_label_ = status_label;
+}
+
 
 void SynthApp::createParameterDials() {
     std::cout << "Creating NEW parameter-aware dials..." << std::endl;
@@ -515,7 +780,7 @@ void SynthApp::createUndoRedoControls() {
 #endif
     lv_label_set_text(undo_label, SynthConstants::Text::BTN_UNDO);
     lv_obj_set_style_text_color(undo_label, lv_color_hex(SynthConstants::Color::HELP), 0);
-    lv_obj_set_style_text_font(undo_label, FontA.lg, 0);
+    lv_obj_set_style_text_font(undo_label, FontA.small, 0);
     lv_obj_center(undo_label);
     undo_label_ = undo_label;
 
@@ -540,7 +805,7 @@ void SynthApp::createUndoRedoControls() {
 #endif
     lv_label_set_text(redo_label, SynthConstants::Text::BTN_REDO);
     lv_obj_set_style_text_color(redo_label, lv_color_hex(SynthConstants::Color::HELP), 0);
-    lv_obj_set_style_text_font(redo_label, FontA.lg, 0);
+    lv_obj_set_style_text_font(redo_label, FontA.small, 0);
     lv_obj_center(redo_label);
     redo_label_ = redo_label;
 
@@ -577,7 +842,7 @@ void SynthApp::createUndoRedoControls() {
 #endif
         lv_label_set_text(btn_label, SynthConstants::Text::BTN_SIMULATE);
         lv_obj_set_style_text_color(btn_label, lv_color_hex(SynthConstants::Color::SIM_BTN_TEXT), 0);
-        lv_obj_set_style_text_font(btn_label, FontA.lg, 0);
+        lv_obj_set_style_text_font(btn_label, FontA.small, 0);
         lv_obj_center(btn_label);
 
         // Add button click event
@@ -640,7 +905,7 @@ void SynthApp::createStatusArea() {
         lv_label_set_text(status_label, SynthConstants::Text::STATUS_READY_LG);
     }
     lv_obj_set_style_text_color(status_label, lv_color_hex(SynthConstants::Color::STATUS), 0);
-    lv_obj_set_style_text_font(status_label, FontA.med, 0);
+    lv_obj_set_style_text_font(status_label, FontA.small, 0);
     lv_obj_center(status_label);
 
     // Store status label for updates

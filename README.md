@@ -440,6 +440,9 @@ aseqdump -p "Espressif ESP32-S3-DevKitC-1-N1"
 - **[LovyanGFX compatibility guide](https://lovyan03.github.io/LovyanGFX/)** - Arduino Core 3.x compatibility notes
 - **[Arduino ESP32-S3 USB documentation](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/usb.html)**
 
+## Usage
+Something about the screen size here
+
 ### Credits
 
 This breakthrough was achieved through extensive testing and debugging of Arduino Core 3.x compatibility issues. Special thanks to the pioarduino community for maintaining Arduino Core 3.x support.
@@ -452,3 +455,5 @@ This breakthrough was achieved through extensive testing and debugging of Arduin
 ---
 
 🎹 **Happy synthesizing!** Connect your desktop simulator to a DAW or run on ESP32-S3 hardware for a complete MIDI controller experience.
+
+

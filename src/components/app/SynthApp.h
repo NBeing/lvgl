@@ -3,8 +3,8 @@
 #include <lvgl.h>
 #include <memory>
 #include <functional>
-#include "../MidiDial.h"
 #include "../ParameterControl.h"
+#include "../DialControl.h"
 #include "../ParameterBinder.h"
 #include "../CommandManager.h"
 #include "../ButtonControl.h"
@@ -38,6 +38,10 @@ private:
     std::shared_ptr<DialControl> lfo_rate_dial_;
     
     // Button controls for testing
+    // Flex layout containers (for new UI)
+    lv_obj_t* dials_row_ = nullptr;
+    lv_obj_t* button_col_ = nullptr;
+
     std::shared_ptr<ButtonControl> filter_enable_btn_;
     std::shared_ptr<ButtonControl> lfo_sync_btn_;
     std::shared_ptr<ButtonControl> trigger_btn_;
@@ -56,9 +60,14 @@ public:
     void setup();
     void loop();
     void createUI();
-    void createParameterDials();    // NEW: Create parameter-aware dials
-    void createButtonControls();    // NEW: Create button controls
-    void createUndoRedoControls();  // NEW: Create undo/redo UI
+    void createParameterDials();    // Legacy: Create parameter-aware dials (absolute)
+    void createButtonControls();    // Legacy: Create button controls (absolute)
+    void createUndoRedoControls();  // Legacy: Create undo/redo UI (absolute)
+    // Flex-based UI creation
+    void createParameterDialsFlex();
+    void createButtonControlsFlex();
+    void createUndoRedoControlsFlex();
+    void createStatusAreaFlex();
     void updateUndoRedoButtons();   // NEW: Update undo/redo button states
     void simulateMidiCC();
     void updateStatus(const char* control, int value);

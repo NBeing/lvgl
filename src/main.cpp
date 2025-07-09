@@ -82,7 +82,7 @@ void setup() {
 void loop() {
     app.loop();
 
-    std::cout << "=== SynthApp Looping ===" << std::endl;
+    // std::cout << "=== SynthApp Looping ===" << std::endl;
     
     // Run MIDI test
     midiTestLoop();
