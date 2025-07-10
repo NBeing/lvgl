@@ -49,6 +49,10 @@ std::shared_ptr<Parameter> ParameterBinder::findParameterByName(const std::strin
     return (it != current_synth_->parameter_by_name.end()) ? it->second : nullptr;
 }
 
+std::shared_ptr<Parameter> ParameterBinder::getParameter(const std::string& name) const {
+    return findParameterByName(name);
+}
+
 std::shared_ptr<Parameter> ParameterBinder::findParameterByCC(uint8_t cc_number) const {
     if (!current_synth_) return nullptr;
     

@@ -49,13 +49,13 @@ void DialControl::createWidgets(lv_obj_t* parent, int x, int y) {
     // Create parameter name label
     name_label_ = lv_label_create(container_);
     lv_obj_set_style_text_color(name_label_, lv_color_hex(0xFFCCCCCC), 0);
-    lv_obj_set_style_text_font(name_label_, FontA.med, 0);
+    lv_obj_set_style_text_font(name_label_, FontA.small, 0);
     lv_obj_align(name_label_, LV_ALIGN_TOP_MID, 0, 2);
     
     // Create arc display
     arc_display_ = lv_arc_create(container_);
     lv_obj_set_size(arc_display_, dial_diameter_, dial_diameter_);
-    lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, -5);
+    lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, 8);  // Move arc down for better label spacing
     std::cout << "[DIAL] arc_display_ created: " << arc_display_ << ", dial_diameter_=" << dial_diameter_ << std::endl;
     
     // Register arc for callbacks
@@ -69,7 +69,7 @@ void DialControl::createWidgets(lv_obj_t* parent, int x, int y) {
     // Create value display label
     value_label_ = lv_label_create(container_);
     lv_obj_set_style_text_color(value_label_, arc_color_, 0);
-    lv_obj_set_style_text_font(value_label_, FontA.lg, 0);
+    lv_obj_set_style_text_font(value_label_, FontA.small, 0);
     lv_obj_align(value_label_, LV_ALIGN_BOTTOM_MID, 0, -2);
     
     // Set up event handlers
@@ -120,7 +120,7 @@ void DialControl::setSize(int width, int height) {
         // Adjust arc size proportionally
         int arc_size = std::min(width - 20, height - 30);
         lv_obj_set_size(arc_display_, arc_size, arc_size);
-        lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, -5);
+        lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, 8);  // Move arc down for better label spacing
         std::cout << "[DIAL] setSize: container_=" << container_ << " size=" << width << "x" << height << ", arc_display_=" << arc_display_ << " arc_size=" << arc_size << std::endl;
         std::cout << "[DIAL] actual container size: " << lv_obj_get_width(container_) << "x" << lv_obj_get_height(container_) << ", arc actual size: " << lv_obj_get_width(arc_display_) << "x" << lv_obj_get_height(arc_display_) << std::endl;
     }
@@ -157,7 +157,7 @@ void DialControl::setDialSize(int diameter) {
     dial_diameter_ = diameter;
     if (arc_display_) {
         lv_obj_set_size(arc_display_, diameter, diameter);
-        lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, -5);
+        lv_obj_align(arc_display_, LV_ALIGN_CENTER, 0, 8);  // Move arc down for better label spacing
     }
 }
 
@@ -191,14 +191,24 @@ void DialControl::updateDisplayFromParameter() {
 }
 
 void DialControl::updateParameterFromControl(uint8_t value) {
-    if (!isParameterBound() || isUpdatingFromParameter()) return;
+    std::cout << "updateParameterFromControl called with value: " << (int)value << std::endl;
+    std::cout << "isParameterBound: " << isParameterBound() << std::endl;
+    std::cout << "isUpdatingFromParameter: " << isUpdatingFromParameter() << std::endl;
+    
+    if (!isParameterBound() || isUpdatingFromParameter()) {
+        std::cout << "Early return from updateParameterFromControl" << std::endl;
+        return;
+    }
     
     auto param = getBoundParameter();
+    std::cout << "Got parameter: " << param.get() << std::endl;
     param->setValue(value);
     display_value_ = value;
     
     updateLabels();
+    std::cout << "About to call notifyValueChanged..." << std::endl;
     notifyValueChanged(value);
+    std::cout << "notifyValueChanged completed" << std::endl;
 }
 
 void DialControl::onParameterBound() {
@@ -274,16 +284,22 @@ void DialControl::updateArcDisplay() {
 
 // Static event handlers
 void DialControl::arc_event_cb(lv_event_t* e) {
+    std::cout << "*** ARC_EVENT_CB CALLED! ***" << std::endl;
     lv_obj_t* arc = static_cast<lv_obj_t*>(lv_event_get_target(e));
     
     auto it = dial_control_map_.find(arc);
+    std::cout << "Arc object: " << arc << ", found in map: " << (it != dial_control_map_.end()) << std::endl;
+    
     if (it != dial_control_map_.end()) {
         DialControl* control = it->second;
         
         uint8_t new_value = static_cast<uint8_t>(lv_arc_get_value(arc));
+        std::cout << "About to call updateParameterFromControl with value: " << (int)new_value << std::endl;
         control->updateParameterFromControl(new_value);
         
         std::cout << "Dial arc changed: " << static_cast<int>(new_value) << std::endl;
+    } else {
+        std::cout << "ERROR: Arc object not found in dial_control_map_!" << std::endl;
     }
 }
 

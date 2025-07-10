@@ -65,7 +65,7 @@ void ButtonControl::bindParameter(std::shared_ptr<Parameter> parameter) {
         }
         
         // Update text to parameter name
-        setText(parameter->getShortName());
+        setLabel(parameter->getShortName());
         
         // Sync initial state
         updateFromParameter();
@@ -144,7 +144,7 @@ void ButtonControl::setMode(ButtonMode mode) {
     updateVisualState();
 }
 
-void ButtonControl::setText(const std::string& text) {
+void ButtonControl::setLabel(const std::string& text) {
     if (label_) {
         lv_label_set_text(label_, text.c_str());
         lv_obj_set_style_text_font(label_, FontA.small, LV_STATE_DEFAULT);

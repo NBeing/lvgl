@@ -100,7 +100,15 @@ void ParameterControl::onParameterChanged(const Parameter& /* parameter */) {
 }
 
 void ParameterControl::notifyValueChanged(uint8_t value) {
+    std::cout << "ParameterControl::notifyValueChanged called with value: " << (int)value << std::endl;
+    std::cout << "value_changed_callback_ is " << (value_changed_callback_ ? "NOT NULL" : "NULL") << std::endl;
+    std::cout << "bound_parameter_ is " << (bound_parameter_ ? "NOT NULL" : "NULL") << std::endl;
+    
     if (value_changed_callback_ && bound_parameter_) {
+        std::cout << "Calling value_changed_callback_..." << std::endl;
         value_changed_callback_(value, bound_parameter_.get());
+        std::cout << "value_changed_callback_ completed" << std::endl;
+    } else {
+        std::cout << "NOT calling value_changed_callback_ - conditions not met" << std::endl;
     }
 }

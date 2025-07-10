@@ -35,7 +35,7 @@ public:
     void setMode(ButtonMode mode);
     ButtonMode getMode() const { return mode_; }
     
-    void setText(const std::string& text);
+    void setLabel(const std::string& text);
     void setColors(lv_color_t normal_color, lv_color_t pressed_color);
     void setToggleColors(lv_color_t off_color, lv_color_t on_color);
     

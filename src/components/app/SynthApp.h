@@ -9,13 +9,17 @@
 #include "components/parameter/ParameterBinder.h"
 #include "components/parameter/CommandManager.h"
 #include "components/controls/ButtonControl.h"
+#include "components/ui/WindowManager.h"
+#include "components/ui/MainControlTab.h"
+#include "components/ui/HelloTab.h"
+#include "components/ui/WorldTab.h"
 #include "hardware/MidiHandler.h"
 
 #if defined(ESP32_BUILD)
-    #include "../../hardware/ESP32Display.h"
+#include "hardware/ESP32Display.h"
 #endif
 
-class SynthApp {
+class SynthApp : public WindowObserver {
 private:
     bool initialized_;
     
@@ -30,7 +34,16 @@ private:
     std::unique_ptr<ParameterBinder> parameter_binder_;
     std::unique_ptr<CommandManager> command_manager_;
     
-    // UI components - NEW: Parameter-aware controls
+    // NEW: Window management system
+    std::unique_ptr<WindowManager> window_manager_;
+    lv_obj_t* root_container_;
+    
+    // Tab instances
+    std::unique_ptr<MainControlTab> main_tab_;
+    std::unique_ptr<HelloTab> hello_tab_;
+    std::unique_ptr<WorldTab> world_tab_;
+
+    // LEGACY: Individual controls (will be moved to MainControlTab)
     std::shared_ptr<DialControl> cutoff_dial_;
     std::shared_ptr<DialControl> resonance_dial_;
     std::shared_ptr<DialControl> volume_dial_;
@@ -60,6 +73,13 @@ public:
     
     void setup();
     void loop();
+    
+    // WindowObserver interface
+    void onTabChanged(const std::string& old_tab, const std::string& new_tab) override;
+    void onPopupOpened(const std::string& popup_name) override;
+    void onPopupClosed(const std::string& popup_name) override;
+    
+    // Legacy methods (for backward compatibility)
     void createUI();
     void createParameterDials();    // Legacy: Create parameter-aware dials (absolute)
     void createButtonControls();    // Legacy: Create button controls (absolute)
@@ -79,6 +99,8 @@ public:
 private:
     void initHardware();
     void initDesktop();
+    void initWindowManager();  // NEW: Initialize window management system
+    void createTabs();         // NEW: Create all tabs
     void handleEvents();
     void handleMidiCC(int cc_number, int value);
     void platformDelay(int ms);

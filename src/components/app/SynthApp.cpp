@@ -22,7 +22,10 @@ lv_obj_t* root_container = nullptr;
     extern uint32_t millis_cb();
 #endif
 
-SynthApp::SynthApp() : initialized_(false) {
+SynthApp::SynthApp() 
+    : initialized_(false)
+    , root_container_(nullptr)
+{
     #if defined(ESP32_BUILD)
         display_driver_.reset(new ESP32Display());
     #endif
@@ -38,6 +41,10 @@ SynthApp::~SynthApp() {
 
 void SynthApp::setup() {
     std::cout << "=== LVGL Synth GUI Starting ===" << std::endl;
+    
+    // Initialize parameter system
+    parameter_binder_ = std::make_unique<ParameterBinder>();
+    command_manager_ = std::make_unique<CommandManager>();
     
     // Load Hydrasynth parameter definitions
     if (!parameter_binder_->loadSynthDefinition("hydrasynth")) {
@@ -55,13 +62,11 @@ void SynthApp::setup() {
     
     // Set up history change callback to update UI
     command_manager_->setHistoryChangedCallback([this]() {
-        updateUndoRedoButtons();
+        // Will be handled by MainControlTab
     });
     
     initHardware();
-    // std::cout << "About to create ui!!" << std::endl;
-
-    createUI();
+    initWindowManager();
     
     initialized_ = true;
     std::cout << "Synth GUI initialized successfully!" << std::endl;
@@ -320,21 +325,21 @@ void SynthApp::createButtonControlsFlex() {
     lv_obj_t* parent = this->button_col_;
     filter_enable_btn_ = std::make_shared<ButtonControl>(parent, 0, 0, config.button_width, config.button_height);
     filter_enable_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
-    filter_enable_btn_->setText(SynthConstants::Text::BTN_FILTER);
+    filter_enable_btn_->setLabel(SynthConstants::Text::BTN_FILTER);
     filter_enable_btn_->setToggleColors(lv_color_hex(SynthConstants::Color::BTN_FILTER_OFF), lv_color_hex(SynthConstants::Color::BTN_FILTER_ON));
     filter_enable_btn_->setToggleValues(SynthConstants::Midi::BTN_TOGGLE_OFF, SynthConstants::Midi::BTN_TOGGLE_ON);
     filter_enable_btn_->setSize(config.button_width, config.button_height);
 
     lfo_sync_btn_ = std::make_shared<ButtonControl>(parent, 0, 0, config.button_width, config.button_height);
     lfo_sync_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
-    lfo_sync_btn_->setText(SynthConstants::Text::BTN_LFO);
+    lfo_sync_btn_->setLabel(SynthConstants::Text::BTN_LFO);
     lfo_sync_btn_->setToggleColors(lv_color_hex(SynthConstants::Color::BTN_LFO_OFF), lv_color_hex(SynthConstants::Color::BTN_LFO_ON));
     lfo_sync_btn_->setToggleValues(SynthConstants::Midi::BTN_TOGGLE_OFF, SynthConstants::Midi::BTN_TOGGLE_ON);
     lfo_sync_btn_->setSize(config.button_width, config.button_height);
 
     trigger_btn_ = std::make_shared<ButtonControl>(parent, 0, 0, config.button_width, config.button_height);
     trigger_btn_->setMode(ButtonControl::ButtonMode::TRIGGER);
-    trigger_btn_->setText(SynthConstants::Text::BTN_TRIGGER);
+    trigger_btn_->setLabel(SynthConstants::Text::BTN_TRIGGER);
     trigger_btn_->setColors(lv_color_hex(SynthConstants::Color::BTN_TRIGGER_OFF), lv_color_hex(SynthConstants::Color::BTN_TRIGGER_ON));
     trigger_btn_->setTriggerValue(SynthConstants::Midi::BTN_TRIGGER_ON, SynthConstants::Midi::BTN_TRIGGER_OFF);
     trigger_btn_->setSize(config.button_width, config.button_height);
@@ -646,7 +651,7 @@ void SynthApp::createButtonControls() {
     if (!filter_enable_btn_) std::cerr << "[UI-ERR] Failed to create filter_enable_btn_!" << std::endl;
 #endif
     filter_enable_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
-    filter_enable_btn_->setText(SynthConstants::Text::BTN_FILTER);
+    filter_enable_btn_->setLabel(SynthConstants::Text::BTN_FILTER);
     filter_enable_btn_->setToggleColors(lv_color_hex(SynthConstants::Color::BTN_FILTER_OFF), lv_color_hex(SynthConstants::Color::BTN_FILTER_ON));
     filter_enable_btn_->setToggleValues(SynthConstants::Midi::BTN_TOGGLE_OFF, SynthConstants::Midi::BTN_TOGGLE_ON);
     filter_enable_btn_->setSize(config.button_width, config.button_height);
@@ -658,7 +663,7 @@ void SynthApp::createButtonControls() {
     if (!lfo_sync_btn_) std::cerr << "[UI-ERR] Failed to create lfo_sync_btn_!" << std::endl;
 #endif
     lfo_sync_btn_->setMode(ButtonControl::ButtonMode::TOGGLE);
-    lfo_sync_btn_->setText(SynthConstants::Text::BTN_LFO);
+    lfo_sync_btn_->setLabel(SynthConstants::Text::BTN_LFO);
     lfo_sync_btn_->setToggleColors(lv_color_hex(SynthConstants::Color::BTN_LFO_OFF), lv_color_hex(SynthConstants::Color::BTN_LFO_ON));
     lfo_sync_btn_->setToggleValues(SynthConstants::Midi::BTN_TOGGLE_OFF, SynthConstants::Midi::BTN_TOGGLE_ON);
     lfo_sync_btn_->setSize(config.button_width, config.button_height);
@@ -670,7 +675,7 @@ void SynthApp::createButtonControls() {
     if (!trigger_btn_) std::cerr << "[UI-ERR] Failed to create trigger_btn_!" << std::endl;
 #endif
     trigger_btn_->setMode(ButtonControl::ButtonMode::TRIGGER);
-    trigger_btn_->setText(SynthConstants::Text::BTN_TRIGGER);
+    trigger_btn_->setLabel(SynthConstants::Text::BTN_TRIGGER);
     trigger_btn_->setColors(lv_color_hex(SynthConstants::Color::BTN_TRIGGER_OFF), lv_color_hex(SynthConstants::Color::BTN_TRIGGER_ON));
     trigger_btn_->setTriggerValue(SynthConstants::Midi::BTN_TRIGGER_ON, SynthConstants::Midi::BTN_TRIGGER_OFF);
     trigger_btn_->setSize(config.button_width, config.button_height);
@@ -954,6 +959,12 @@ void SynthApp::loop() {
     
     lv_timer_handler();
     midi_handler_->update();  // Process MIDI with Control_Surface
+    
+    // Update window manager
+    if (window_manager_) {
+        window_manager_->update();
+    }
+    
     handleEvents();
     
     platformDelay(5);
@@ -1033,4 +1044,81 @@ void SynthApp::handleRedo() {
         command_manager_->redo();
         updateUndoRedoButtons();
     }
+}
+
+// ============================================================================
+// NEW: Window Management Implementation
+// ============================================================================
+
+void SynthApp::initWindowManager() {
+    std::cout << "Initializing WindowManager..." << std::endl;
+    
+    // Create a constrained root container for ESP32 parity
+    if (!root_container_) {
+        root_container_ = lv_obj_create(lv_scr_act());
+        
+        // Set size to match ESP32 display dimensions for consistency
+        // Common ESP32 display sizes: 320x240, 480x320, etc.
+        // Let's use a reasonable size that works on both platforms
+        int target_width = 480;
+        int target_height = 320;
+        
+        // Get actual screen size
+        int screen_width = lv_display_get_horizontal_resolution(lv_display_get_default());
+        int screen_height = lv_display_get_vertical_resolution(lv_display_get_default());
+        
+        // Use smaller of target size or actual screen size
+        int container_width = std::min(target_width, screen_width);
+        int container_height = std::min(target_height, screen_height);
+        
+        lv_obj_set_size(root_container_, container_width, container_height);
+        lv_obj_center(root_container_);  // Center on screen
+        
+        // Style the root container
+        lv_obj_set_style_bg_color(root_container_, lv_color_hex(SynthConstants::Color::BG), 0);
+        lv_obj_set_style_border_color(root_container_, lv_color_hex(0xFF333333), 0);
+        lv_obj_set_style_border_width(root_container_, 2, 0);
+        lv_obj_set_style_radius(root_container_, 8, 0);
+        lv_obj_set_style_pad_all(root_container_, 0, 0);
+        
+        std::cout << "Created root container: " << container_width << "x" << container_height << std::endl;
+    }
+    
+    // Create window manager with the constrained container
+    window_manager_ = std::make_unique<WindowManager>(root_container_);
+    window_manager_->addObserver(this);  // Register as observer
+    
+    createTabs();
+    
+    std::cout << "WindowManager initialized with 3 tabs" << std::endl;
+}
+
+void SynthApp::createTabs() {
+    // Create Main Control Tab (with your existing controls)
+    main_tab_ = std::make_unique<MainControlTab>(parameter_binder_.get(), command_manager_.get(), midi_handler_.get());
+    window_manager_->addTab(std::move(main_tab_));
+    
+    // Create Hello Tab
+    hello_tab_ = std::make_unique<HelloTab>();
+    window_manager_->addTab(std::move(hello_tab_));
+    
+    // Create World Tab  
+    world_tab_ = std::make_unique<WorldTab>();
+    window_manager_->addTab(std::move(world_tab_));
+    
+    // Main tab will be active by default (first tab added)
+    std::cout << "Created 3 tabs: Main, Hello, World" << std::endl;
+}
+
+// WindowObserver interface implementation
+void SynthApp::onTabChanged(const std::string& old_tab, const std::string& new_tab) {
+    std::cout << "Tab changed from '" << old_tab << "' to '" << new_tab << "'" << std::endl;
+}
+
+void SynthApp::onPopupOpened(const std::string& popup_name) {
+    std::cout << "Popup opened: " << popup_name << std::endl;
+}
+
+void SynthApp::onPopupClosed(const std::string& popup_name) {
+    std::cout << "Popup closed: " << popup_name << std::endl;
 }

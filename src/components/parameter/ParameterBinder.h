@@ -25,6 +25,7 @@ public:
     
     // Parameter lookup
     std::shared_ptr<Parameter> findParameterByName(const std::string& name) const;
+    std::shared_ptr<Parameter> getParameter(const std::string& name) const;  // Alias for findParameterByName
     std::shared_ptr<Parameter> findParameterByCC(uint8_t cc_number) const;
     std::vector<std::shared_ptr<Parameter>> getParametersByCategory(ParameterCategory category) const;
     std::vector<std::shared_ptr<Parameter>> searchParameters(const std::string& query) const;
