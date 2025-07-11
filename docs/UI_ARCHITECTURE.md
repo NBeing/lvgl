@@ -20,12 +20,12 @@ Controls (Dials, Buttons, etc.)
 - **Location**: `src/components/app/SynthApp.cpp`
 - **Purpose**: Top-level application that initializes everything
 - **Key Responsibilities**:
-  - Initialize LVGL and hardware 
+  - Initialize LVGL and hardwabuildre 
   - Create parameter system (ParameterBinder, CommandManager)
   - Create and configure WindowManager
   - Set up MIDI handling
 
-```cpp
+```cppxcompile
 // Initialization flow in SynthApp::setup()
 void SynthApp::setup() {
     // 1. Initialize parameter system

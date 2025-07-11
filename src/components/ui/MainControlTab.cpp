@@ -45,25 +45,6 @@ void MainControlTab::create(lv_obj_t* parent) {
     // Bind parameters
     bindParameters();
 
-    // TEMPORARY: Add a test command to verify undo/redo buttons work
-    if (command_manager_ && parameter_binder_) {
-        std::cout << "Adding test command to verify undo/redo functionality" << std::endl;
-        
-        // Get a parameter to test with
-        auto cutoff_param = parameter_binder_->getParameter("Filter Cutoff");
-        if (cutoff_param) {
-            // Create a SetParameterCommand that changes the cutoff from current value to current+10
-            uint8_t current_val = cutoff_param->getCurrentValue();
-            uint8_t new_val = std::min(127, (int)current_val + 10);
-            
-            // Create and execute a command - this should make undo available
-            auto test_command = std::make_unique<SetParameterCommand>(cutoff_param.get(), new_val);
-            command_manager_->executeCommand(std::move(test_command));
-            
-            std::cout << "Test command executed: cutoff " << (int)current_val << " -> " << (int)new_val << std::endl;
-        }
-    }
-
     std::cout << "MainControlTab created" << std::endl;
 }
 
@@ -217,144 +198,75 @@ void MainControlTab::bindParameters() {
         return;
     }
 
-    std::cout << "=== BINDING PARAMETERS WITH COMMAND CALLBACKS ===" << std::endl;
-    std::cout << "parameter_binder_ address: " << parameter_binder_ << std::endl;
+    std::cout << "Binding parameters with command callbacks..." << std::endl;
 
-    // CRITICAL FIX: Ensure parameters are loaded!
-    std::cout << "Checking if parameters are loaded..." << std::endl;
+    // Ensure parameters are loaded
     if (!parameter_binder_->loadSynthDefinition("hydrasynth")) {
         std::cout << "Failed to load Hydrasynth parameters!" << std::endl;
-    } else {
-        std::cout << "Successfully loaded Hydrasynth parameters!" << std::endl;
-    }
-
-    // Let's check what parameters are available
-    std::cout << "Checking available parameters..." << std::endl;
-    
-    // Try different parameter names to see what exists
-    std::vector<std::string> test_names = {
-        "Master Volume", "Filter 1 Cutoff", "Filter 1 Resonance", 
-        "ENV 1 Attack", "ENV 1 Release", "LFO 1 Rate",
-        "Filter Cutoff", "filter cutoff", "cutoff", "Cutoff",
-        "Filter Resonance", "filter resonance", "resonance", "Resonance",
-        "Volume", "volume", "Attack", "attack", "Release", "release"
-    };
-    
-    for (const auto& name : test_names) {
-        auto param = parameter_binder_->getParameter(name);
-        std::cout << "Parameter '" << name << "': " << (param ? "FOUND" : "NOT FOUND") << std::endl;
-    }
-
-    // TEMPORARY: Create dummy parameters if none exist for testing undo/redo
-    std::cout << "Creating temporary parameters for testing..." << std::endl;
-    
-    // Create a temporary parameter for testing
-    // Note: This is a hack just to test the undo/redo system
-    // The real fix is to ensure parameters are loaded in the main app
-    
-    // For now, let's create commands manually to test undo/redo buttons
-    std::cout << "Creating manual test commands..." << std::endl;
-    if (command_manager_) {
-        // Create some dummy commands to test undo/redo
-        // We'll create a fake command that just logs when executed/undone
-        class TestCommand : public Command {
-        private:
-            std::string action_;
-            int value_;
-        public:
-            TestCommand(const std::string& action, int value) : action_(action), value_(value) {}
-            void execute() override { 
-                std::cout << "Executing: " << action_ << " = " << value_ << std::endl; 
-            }
-            void undo() override { 
-                std::cout << "Undoing: " << action_ << " = " << value_ << std::endl; 
-            }
-            std::string getDescription() const override { 
-                return action_ + ": " + std::to_string(value_); 
-            }
-            std::string getCommandType() const override { return "TestCommand"; }
-        };
-        
-        // Add a few test commands
-        command_manager_->executeCommand(std::make_unique<TestCommand>("Test Action 1", 100));
-        command_manager_->executeCommand(std::make_unique<TestCommand>("Test Action 2", 200));
-        
-        std::cout << "Added test commands. can_undo=" << command_manager_->canUndo() << std::endl;
-        updateStatusDisplay();
+        return;
     }
 
     // Bind dial controls to parameters AND set up command creation
     auto cutoff_param = parameter_binder_->getParameter("Filter 1 Cutoff");
-    std::cout << "Got cutoff_param: " << cutoff_param.get() << std::endl;
     if (cutoff_param) {
-        std::cout << "Binding cutoff parameter..." << std::endl;
         cutoff_dial_->bindParameter(cutoff_param);
-        std::cout << "After binding, cutoff_dial_->isParameterBound() = " << cutoff_dial_->isParameterBound() << std::endl;
         
         // Set up value changed callback to create commands AND send MIDI
         cutoff_dial_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
-            std::cout << "*** CUTOFF CALLBACK TRIGGERED! value=" << (int)value << " ***" << std::endl;
-            
-            // Send MIDI output (restored functionality)
+            // Send MIDI output
             if (midi_handler_ && midi_handler_->isConnected() && param) {
-                midi_handler_->sendControlChange(1, param->getCCNumber(), value);  // Channel 1
-                std::cout << "Sent MIDI CC" << (int)param->getCCNumber() << " = " << (int)value << std::endl;
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
             }
             
+            // Create command for undo/redo
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for cutoff: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
-        std::cout << "Cutoff callback set!" << std::endl;
-    } else {
-        std::cout << "ERROR: Could not get Filter Cutoff parameter!" << std::endl;
     }
 
     auto resonance_param = parameter_binder_->getParameter("Filter 1 Resonance");
     if (resonance_param) {
-        std::cout << "Binding resonance parameter..." << std::endl;
         resonance_dial_->bindParameter(resonance_param);
         resonance_dial_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
-            std::cout << "*** RESONANCE CALLBACK TRIGGERED! value=" << (int)value << " ***" << std::endl;
+            if (midi_handler_ && midi_handler_->isConnected() && param) {
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            }
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for resonance: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
-        std::cout << "Resonance callback set!" << std::endl;
     }
 
     auto volume_param = parameter_binder_->getParameter("Master Volume");
     if (volume_param) {
-        std::cout << "Binding volume parameter..." << std::endl;
         volume_dial_->bindParameter(volume_param);
         volume_dial_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
-            std::cout << "*** VOLUME CALLBACK TRIGGERED! value=" << (int)value << " ***" << std::endl;
+            if (midi_handler_ && midi_handler_->isConnected() && param) {
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            }
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for volume: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
-        std::cout << "Volume callback set!" << std::endl;
     }
-
-    // ...existing code...
 
     auto attack_param = parameter_binder_->getParameter("ENV 1 Attack");
     if (attack_param) {
         attack_dial_->bindParameter(attack_param);
         attack_dial_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+            if (midi_handler_ && midi_handler_->isConnected() && param) {
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            }
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for attack: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
@@ -364,10 +276,12 @@ void MainControlTab::bindParameters() {
     if (release_param) {
         release_dial_->bindParameter(release_param);
         release_dial_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+            if (midi_handler_ && midi_handler_->isConnected() && param) {
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            }
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for release: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
@@ -377,10 +291,12 @@ void MainControlTab::bindParameters() {
     if (lfo_rate_param) {
         lfo_rate_dial_->bindParameter(lfo_rate_param);
         lfo_rate_dial_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+            if (midi_handler_ && midi_handler_->isConnected() && param) {
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            }
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for lfo_rate: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
@@ -391,10 +307,12 @@ void MainControlTab::bindParameters() {
     if (filter_enable_param) {
         filter_enable_btn_->bindParameter(filter_enable_param);
         filter_enable_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+            if (midi_handler_ && midi_handler_->isConnected() && param) {
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            }
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for filter enable: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
@@ -404,10 +322,12 @@ void MainControlTab::bindParameters() {
     if (lfo_sync_param) {
         lfo_sync_btn_->bindParameter(lfo_sync_param);
         lfo_sync_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+            if (midi_handler_ && midi_handler_->isConnected() && param) {
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            }
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for lfo sync: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
@@ -417,10 +337,12 @@ void MainControlTab::bindParameters() {
     if (trigger_param) {
         trigger_btn_->bindParameter(trigger_param);
         trigger_btn_->setValueChangedCallback([this](uint8_t value, const Parameter* param) {
+            if (midi_handler_ && midi_handler_->isConnected() && param) {
+                midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+            }
             if (command_manager_) {
                 auto command = std::make_unique<SetParameterCommand>(const_cast<Parameter*>(param), value);
                 command_manager_->executeCommand(std::move(command));
-                std::cout << "Created command for trigger: " << (int)value << std::endl;
                 updateStatusDisplay();
             }
         });
@@ -436,11 +358,9 @@ void MainControlTab::update() {
 void MainControlTab::updateStatusDisplay() {
     if (!status_label_ || !command_manager_) return;
 
-    // Update undo/redo button states like the working SynthApp version
+    // Update undo/redo button states
     bool can_undo = command_manager_->canUndo();
     bool can_redo = command_manager_->canRedo();
-
-    std::cout << "updateStatusDisplay: can_undo=" << can_undo << ", can_redo=" << can_redo << std::endl;
 
     // Update button visual states like the working version
     if (undo_btn_) {
@@ -505,37 +425,15 @@ void MainControlTab::onDeactivated() {
 }
 
 void MainControlTab::handleUndo() {
-    std::cout << "handleUndo called, can_undo=" << (command_manager_ ? command_manager_->canUndo() : false) << std::endl;
-    
     if (command_manager_ && command_manager_->canUndo()) {
         command_manager_->undo();
-        
-        // Update status to show undo action
-        if (status_label_) {
-            lv_label_set_text(status_label_, "Undo executed");
-        }
-        
-        std::cout << "Undo executed successfully!" << std::endl;
         updateStatusDisplay();
-    } else {
-        std::cout << "Cannot undo - no commands available" << std::endl;
     }
 }
 
 void MainControlTab::handleRedo() {
-    std::cout << "handleRedo called, can_redo=" << (command_manager_ ? command_manager_->canRedo() : false) << std::endl;
-    
     if (command_manager_ && command_manager_->canRedo()) {
         command_manager_->redo();
-        
-        // Update status to show redo action
-        if (status_label_) {
-            lv_label_set_text(status_label_, "Redo executed");
-        }
-        
-        std::cout << "Redo executed successfully!" << std::endl;
         updateStatusDisplay();
-    } else {
-        std::cout << "Cannot redo - no commands available" << std::endl;
     }
 }
