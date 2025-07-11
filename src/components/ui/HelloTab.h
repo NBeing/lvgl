@@ -1,9 +1,14 @@
 #pragma once
 
 #include "components/ui/Window.h"
+#include "components/ui/PagedView.h"
+#include <memory>
 
 /**
- * @brief Simple demo tab that displays "Hello" in the center
+ * @brief Demo tab that demonstrates the PagedView component
+ * 
+ * This tab shows how to use the PagedView component with multiple pages
+ * of different content types (text, controls, information panels).
  */
 class HelloTab : public Tab {
 public:
@@ -18,5 +23,14 @@ protected:
     void onDeactivated() override;
 
 private:
-    lv_obj_t* hello_label_;
+    void setupPages();
+    void onPageChanged(int old_page, int new_page);
+
+    // Page content creators
+    static void createWelcomePage(lv_obj_t* parent);
+    static void createControlsPage(lv_obj_t* parent);
+    static void createInfoPage(lv_obj_t* parent);
+    static void createSettingsPage(lv_obj_t* parent);
+
+    std::unique_ptr<PagedView> paged_view_;
 };
