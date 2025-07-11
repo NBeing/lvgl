@@ -9,6 +9,8 @@
 #include "components/ui/MainControlTab.h"
 #include "components/ui/HelloTab.h"
 #include "components/ui/WorldTab.h"
+#include "components/ui/SettingsTab.h"
+#include "components/ui/WorldTab.h"
 #include "hardware/MidiHandler.h"
 
 #if defined(ESP32_BUILD)
@@ -43,6 +45,7 @@ private:
     std::unique_ptr<MainControlTab> main_tab_;
     std::unique_ptr<HelloTab> hello_tab_;
     std::unique_ptr<WorldTab> world_tab_;
+    std::unique_ptr<SettingsTab> settings_tab_;
     
 public:
     SynthApp();

@@ -5,6 +5,7 @@
 #include "components/ui/MainControlTab.h"
 #include "components/ui/HelloTab.h"
 #include "components/ui/WorldTab.h"
+#include "components/ui/SettingsTab.h"
 #include "FontConfig.h"
 #include "Constants.h"
 #include <iostream>
@@ -162,8 +163,12 @@ void SynthApp::createTabs() {
     world_tab_ = std::make_unique<WorldTab>();
     window_manager_->addTab(std::move(world_tab_));
     
+    // Create Settings Tab
+    settings_tab_ = std::make_unique<SettingsTab>();
+    window_manager_->addTab(std::move(settings_tab_));
+    
     // Main tab will be active by default (first tab added)
-    std::cout << "Created 3 tabs: Main, Hello, World" << std::endl;
+    std::cout << "Created 4 tabs: Main, Hello, World, Settings" << std::endl;
 }
 
 void SynthApp::loop() {
