@@ -1,6 +1,8 @@
 #include "components/ui/WorldTab.h"
 #include "FontConfig.h"
 #include "Constants.h"
+#include "components/ui/ContainerFactory.h"
+
 #include <iostream>
 
 WorldTab::WorldTab()
@@ -15,14 +17,21 @@ WorldTab::WorldTab()
 void WorldTab::create(lv_obj_t* parent) {
     if (container_) return; // Already created
 
-    // Create main container for this tab
-    container_ = lv_obj_create(parent);
-    lv_obj_set_size(container_, LV_PCT(98), LV_PCT(98));
-    lv_obj_set_pos(container_, 0, 0);
-    lv_obj_set_style_bg_color(container_, lv_color_hex(SynthConstants::Color::BG), 0);
-    lv_obj_set_style_border_width(container_, 0, 0);
-    lv_obj_set_style_pad_all(container_, 8, 0);
+    // Create main container for this tab using ContainerFactory
+    container_ = UI::createContainer({
+        .parent = parent,
+        .width_pct = 98,
+        .height_pct = 98,
+        .align = LV_ALIGN_TOP_LEFT,
+        .x_offset = 0,
+        .y_offset = 0,
+        .bg_color = lv_color_hex(SynthConstants::Color::BG),
+        .bg_opa = LV_OPA_COVER,
+        .border_width = 0,
+        .pad_all = 8
+    });
 
+    
     setContainer(container_);
 
     // Create title
@@ -46,15 +55,19 @@ void WorldTab::create(lv_obj_t* parent) {
 }
 
 void WorldTab::createModalButtons() {
-    // Create container for buttons
-    buttons_container_ = lv_obj_create(container_);
-    lv_obj_set_size(buttons_container_, LV_PCT(90), LV_SIZE_CONTENT);
-    lv_obj_align(buttons_container_, LV_ALIGN_CENTER, 0, 20);
-    lv_obj_set_style_bg_opa(buttons_container_, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(buttons_container_, 0, 0);
-    lv_obj_set_style_pad_all(buttons_container_, 10, 0);
-
-    // Set up flex layout
+    // Create container for buttons using ContainerFactory
+    buttons_container_ = UI::createContainer({
+        .parent = container_,
+        .width_pct = 90,
+        .height_pct = 0, // LV_SIZE_CONTENT
+        .align = LV_ALIGN_CENTER,
+        .x_offset = 0,
+        .y_offset = 20,
+        .bg_opa = LV_OPA_TRANSP,
+        .border_width = 0,
+        .pad_all = 10
+    });
+    lv_obj_set_height(buttons_container_, LV_SIZE_CONTENT);
     lv_obj_set_layout(buttons_container_, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(buttons_container_, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(buttons_container_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);

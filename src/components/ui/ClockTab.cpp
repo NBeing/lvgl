@@ -3,6 +3,8 @@
 #include "FontConfig.h"
 #include "components/settings/SettingsManager.h"
 #include "components/midi/HardwareMidiManager.h"
+#include "components/ui/ContainerFactory.h"
+
 #include <iostream>
 
 ClockTab::ClockTab()
@@ -31,13 +33,19 @@ ClockTab::ClockTab()
 void ClockTab::create(lv_obj_t* parent) {
     if (container_) return; // Already created
 
-    // Create main container for this tab
-    container_ = lv_obj_create(parent);
-    lv_obj_set_size(container_, LV_PCT(98), LV_PCT(98));
-    lv_obj_set_pos(container_, 0, 0);
-    lv_obj_set_style_bg_color(container_, lv_color_hex(SynthConstants::Color::BG), 0);
-    lv_obj_set_style_border_width(container_, 0, 0);
-    lv_obj_set_style_pad_all(container_, 8, 0);
+    // Create main container for this tab using ContainerFactory
+    container_ = UI::createContainer({
+        .parent = parent,
+        .width_pct = 98,
+        .height_pct = 98,
+        .align = LV_ALIGN_TOP_LEFT,
+        .x_offset = 0,
+        .y_offset = 0,
+        .bg_color = lv_color_hex(SynthConstants::Color::BG),
+        .bg_opa = LV_OPA_COVER,
+        .border_width = 0,
+        .pad_all = 8
+    });
 
     // Set up main layout
     lv_obj_set_layout(container_, LV_LAYOUT_FLEX);

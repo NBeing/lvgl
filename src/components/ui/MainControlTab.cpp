@@ -10,6 +10,7 @@
 #include "components/midi/UnifiedMidiManager.h"
 #include "components/parameter/Command.h"  // For SetParameterCommand
 #include "Constants.h"
+#include "components/ui/ContainerFactory.h"
 #include <iostream>
 
 MainControlTab::MainControlTab(ParameterBinder* param_binder, CommandManager* cmd_manager, MidiHandler* midi_handler)
@@ -26,13 +27,22 @@ MainControlTab::MainControlTab(ParameterBinder* param_binder, CommandManager* cm
 void MainControlTab::create(lv_obj_t* parent) {
     if (container_) return;  // Already created
 
-    // Create main container for this tab
-    container_ = lv_obj_create(parent);
-    lv_obj_set_size(container_, LV_PCT(98), LV_PCT(98));
-    lv_obj_set_pos(container_, 0, 0);
-    lv_obj_set_style_bg_color(container_, lv_color_hex(SynthConstants::Color::BG), 0);
-    lv_obj_set_style_border_width(container_, 0, 0);
-    lv_obj_set_style_pad_all(container_, 2, 0);
+    // Create main container for this tab using mergeOptions
+    UI::ContainerOptions mainOverrides = {
+        .parent = parent,
+        .width_pct = 98,
+        .height_pct = 98,
+        .align = LV_ALIGN_TOP_LEFT,
+        .x_offset = 0,
+        .y_offset = 0,
+        .bg_color = lv_color_hex(SynthConstants::Color::BG),
+        .bg_opa = LV_OPA_COVER,
+        .border_width = 0,
+        .pad_all = 2,
+        .use_bg_color = true,
+        .use_bg_opa = true
+    };
+    container_ = UI::createContainer(UI::mergeOptions(UI::DefaultContainer, mainOverrides));
 
     setContainer(container_);
 
@@ -42,23 +52,57 @@ void MainControlTab::create(lv_obj_t* parent) {
 }
 
 void MainControlTab::setupComponents() {
-    // Create layout containers
-    dials_container_ = lv_obj_create(container_);
-    lv_obj_set_size(dials_container_, LV_PCT(98), LV_PCT(60));
-    lv_obj_align(dials_container_, LV_ALIGN_TOP_MID, 0, 0);
-    lv_obj_set_style_bg_opa(dials_container_, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(dials_container_, 0, 0);
-    lv_obj_set_style_pad_all(dials_container_, 2, 0);
+    // Dials container: align to parent (top mid)
+    UI::ContainerOptions dialsOverrides = {
+        .parent = container_,
+        .width_pct = 98,
+        .height_pct = 60,
+        .align = LV_ALIGN_TOP_MID,
+        .x_offset = 0,
+        .y_offset = 0,
+        .bg_color = {},
+        .bg_opa = LV_OPA_TRANSP,
+        .border_width = 0,
+        .pad_all = 2,
+        .use_bg_color = false,
+        .use_bg_opa = true
+    };
+    dials_container_ = UI::createContainer(UI::mergeOptions(UI::DefaultContainer, dialsOverrides));
 
-    buttons_container_ = lv_obj_create(container_);
-    lv_obj_set_size(buttons_container_, LV_PCT(98), LV_PCT(20));
+    // Buttons container: align to dials_container_
+    UI::ContainerOptions buttonsOverrides = {
+        .parent = container_,
+        .width_pct = 98,
+        .height_pct = 20,
+        .align = LV_ALIGN_TOP_LEFT, // temp, will realign below
+        .x_offset = 0,
+        .y_offset = 0,
+        .bg_color = {},
+        .bg_opa = LV_OPA_TRANSP,
+        .border_width = 0,
+        .pad_all = 2,
+        .use_bg_color = false,
+        .use_bg_opa = true
+    };
+    buttons_container_ = UI::createContainer(UI::mergeOptions(UI::DefaultContainer, buttonsOverrides));
     lv_obj_align_to(buttons_container_, dials_container_, LV_ALIGN_OUT_BOTTOM_MID, 0, 2);
-    lv_obj_set_style_bg_opa(buttons_container_, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(buttons_container_, 0, 0);
-    lv_obj_set_style_pad_all(buttons_container_, 2, 0);
 
-    status_container_ = lv_obj_create(container_);
-    lv_obj_set_size(status_container_, LV_PCT(98), LV_PCT(20));
+    // Status container: align to buttons_container_
+    UI::ContainerOptions statusOverrides = {
+        .parent = container_,
+        .width_pct = 98,
+        .height_pct = 20,
+        .align = LV_ALIGN_TOP_LEFT, // temp, will realign below
+        .x_offset = 0,
+        .y_offset = 0,
+        .bg_color = {},
+        .bg_opa = LV_OPA_COVER,
+        .border_width = -1,
+        .pad_all = -1,
+        .use_bg_color = false,
+        .use_bg_opa = false
+    };
+    status_container_ = UI::createContainer(UI::mergeOptions(UI::DefaultContainer, statusOverrides));
     lv_obj_align_to(status_container_, buttons_container_, LV_ALIGN_OUT_BOTTOM_MID, 0, 2);
 
     // Create components

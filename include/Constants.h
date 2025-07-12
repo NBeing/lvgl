@@ -7,7 +7,7 @@ namespace SynthConstants {
 
     // --- Color palette ---
     namespace Color {
-        inline constexpr int BG = 0x181818;
+        inline constexpr int BG = 0x000000; // Black background
         inline constexpr int TITLE = 0x00FF00;
         inline constexpr int HELP = 0xCCCCCC;
         inline constexpr int STATUS = 0xFFFF00;
