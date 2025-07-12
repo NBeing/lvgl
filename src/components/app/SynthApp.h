@@ -10,7 +10,7 @@
 #include "components/ui/HelloTab.h"
 #include "components/ui/WorldTab.h"
 #include "components/ui/SettingsTab.h"
-#include "components/ui/WorldTab.h"
+#include "components/ui/ClockTab.h"
 #include "hardware/MidiHandler.h"
 
 #if defined(ESP32_BUILD)
@@ -32,7 +32,8 @@ private:
         lv_indev_t* mousewheel_;
     #endif
     
-    std::unique_ptr<MidiHandler> midi_handler_;
+    // Core components
+    std::shared_ptr<MidiHandler> midi_handler_;  // Shared so UnifiedMidiManager can use it
     
     // Parameter system
     std::unique_ptr<ParameterBinder> parameter_binder_;
@@ -46,6 +47,7 @@ private:
     std::unique_ptr<HelloTab> hello_tab_;
     std::unique_ptr<WorldTab> world_tab_;
     std::unique_ptr<SettingsTab> settings_tab_;
+    std::unique_ptr<ClockTab> clock_tab_;
     
 public:
     SynthApp();
@@ -59,12 +61,18 @@ public:
     
     // Utility methods
     void simulateMidiCC();
+    void testHardwareMidi();
     bool isInitialized() const;
+    
+    // Access to shared components
+    std::shared_ptr<MidiHandler> getMidiHandler() const;
     
 private:
     // Initialization methods
     void initHardware();
+    #if !defined(ESP32_BUILD)
     void initDesktop();
+    #endif
     void initWindowManager();
     void createTabs();
 };

@@ -31,14 +31,15 @@ private:
 public:
     MidiHandler() : initialized_(false) {
         #if defined(ESP32_BUILD)
-            std::cout << "MidiHandler constructor called!" << std::endl;
+            std::cout << "MidiHandler constructor called! Instance at: " << this << std::endl;
         #else
-            std::cout << "MidiHandler constructor called!" << std::endl;
+            std::cout << "MidiHandler constructor called! Instance at: " << this << std::endl;
         #endif
         #if !defined(ESP32_BUILD)
             try {
                 midi_out_ = std::make_unique<RtMidiOut>();
                 current_port_ = 0;
+                std::cout << "MidiHandler " << this << " - RtMidiOut created" << std::endl;
             } catch (RtMidiError& error) {
                 std::cerr << "RtMidi initialization error: " << error.getMessage() << std::endl;
             }

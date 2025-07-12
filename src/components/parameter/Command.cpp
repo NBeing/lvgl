@@ -36,7 +36,7 @@ void SetParameterCommand::undo() {
 
 std::string SetParameterCommand::getDescription() const {
     return parameter_name_ + ": " + 
-           std::to_string(old_value_) + " → " + std::to_string(new_value_);
+           std::to_string(old_value_) + " -> " + std::to_string(new_value_);
 }
 
 bool SetParameterCommand::canMerge(const Command* other) const {
@@ -93,7 +93,7 @@ void ToggleParameterCommand::undo() {
 
 std::string ToggleParameterCommand::getDescription() const {
     return "Toggle " + parameter_name_ + ": " + 
-           (old_value_ == 0 ? "OFF" : "ON") + " → " + 
+           (old_value_ == 0 ? "OFF" : "ON") + " -> " + 
            (new_value_ == 0 ? "OFF" : "ON");
 }
 

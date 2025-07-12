@@ -473,7 +473,7 @@
     "modulation": [
       {
         "name": "Mod Wheel to Filter",
-        "short_name": "MW→Flt",
+        "short_name": "MW->Flt",
         "cc_number": 46,
         "min_value": 0,
         "max_value": 127,
@@ -484,7 +484,7 @@
       },
       {
         "name": "Mod Wheel to LFO",
-        "short_name": "MW→LFO",
+        "short_name": "MW->LFO",
         "cc_number": 47,
         "min_value": 0,
         "max_value": 127,
@@ -495,7 +495,7 @@
       },
       {
         "name": "Aftertouch to Filter",
-        "short_name": "AT→Flt",
+        "short_name": "AT->Flt",
         "cc_number": 48,
         "min_value": 0,
         "max_value": 127,
@@ -506,7 +506,7 @@
       },
       {
         "name": "Aftertouch to LFO",
-        "short_name": "AT→LFO",
+        "short_name": "AT->LFO",
         "cc_number": 49,
         "min_value": 0,
         "max_value": 127,

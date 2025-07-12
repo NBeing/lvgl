@@ -148,6 +148,63 @@ void GlobalSettingsModal::registerGlobalSettings() {
     debug_mode.current_value = false;
     settings.registerSetting(debug_mode);
 
+    // MIDI Clock Settings
+    SettingsManager::SettingDefinition clock_mode;
+    clock_mode.key = "midi.clock_mode";
+    clock_mode.display_name = "MIDI Clock Mode";
+    clock_mode.description = "Internal clock generation or external sync";
+    clock_mode.type = SettingsManager::SettingType::LIST_SELECTION;
+    clock_mode.list_options = {"Internal", "External", "Off"};
+    clock_mode.default_value = 0; // Internal
+    clock_mode.current_value = 0;
+    settings.registerSetting(clock_mode);
+
+    SettingsManager::SettingDefinition ppqn;
+    ppqn.key = "midi.ppqn";
+    ppqn.display_name = "MIDI Clock PPQN";
+    ppqn.description = "Pulses Per Quarter Note (12-96)";
+    ppqn.type = SettingsManager::SettingType::LIST_SELECTION;
+    ppqn.list_options = {"12 PPQN", "24 PPQN (Standard)", "48 PPQN", "96 PPQN"};
+    ppqn.default_value = 1; // 24 PPQN
+    ppqn.current_value = 1;
+    settings.registerSetting(ppqn);
+
+    SettingsManager::SettingDefinition send_clock;
+    send_clock.key = "midi.send_clock";
+    send_clock.display_name = "Send MIDI Clock";
+    send_clock.description = "Send MIDI clock messages to external devices";
+    send_clock.type = SettingsManager::SettingType::BOOLEAN;
+    send_clock.default_value = true;
+    send_clock.current_value = true;
+    settings.registerSetting(send_clock);
+
+    SettingsManager::SettingDefinition send_transport;
+    send_transport.key = "midi.send_transport";
+    send_transport.display_name = "Send Transport Controls";
+    send_transport.description = "Send MIDI start/stop/continue messages";
+    send_transport.type = SettingsManager::SettingType::BOOLEAN;
+    send_transport.default_value = true;
+    send_transport.current_value = true;
+    settings.registerSetting(send_transport);
+
+    SettingsManager::SettingDefinition receive_clock;
+    receive_clock.key = "midi.receive_clock";
+    receive_clock.display_name = "Receive MIDI Clock";
+    receive_clock.description = "Sync to incoming MIDI clock messages";
+    receive_clock.type = SettingsManager::SettingType::BOOLEAN;
+    receive_clock.default_value = false;
+    receive_clock.current_value = false;
+    settings.registerSetting(receive_clock);
+
+    SettingsManager::SettingDefinition receive_transport;
+    receive_transport.key = "midi.receive_transport";
+    receive_transport.display_name = "Receive Transport Controls";
+    receive_transport.description = "Respond to MIDI start/stop/continue messages";
+    receive_transport.type = SettingsManager::SettingType::BOOLEAN;
+    receive_transport.default_value = false;
+    receive_transport.current_value = false;
+    settings.registerSetting(receive_transport);
+
     std::cout << "GlobalSettingsModal: Registered " << settings.getAllSettingKeys().size() 
               << " global settings" << std::endl;
 }

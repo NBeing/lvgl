@@ -111,7 +111,7 @@ void ESP32Display::touchCallback(lv_indev_t* indev, lv_indev_data_t* data) {
         // Optional debug output
         if (instance_->touch_debug_) {
             std::cout << "Touch: raw(" << raw_x << "," << raw_y 
-                      << ") → mapped(" << mapped_x << "," << mapped_y << ")" << std::endl;
+                      << ") -> mapped(" << mapped_x << "," << mapped_y << ")" << std::endl;
         }
     } else {
         data->state = LV_INDEV_STATE_RELEASED;

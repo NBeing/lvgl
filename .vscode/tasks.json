@@ -71,7 +71,7 @@
             "args": [
                 "run",
                 "-e",
-                "rymcu-esp32-s3-devkitc-1",
+                "rymcu-esp32-s3-arduino3x",
                 "-t",
                 "upload"
             ],
@@ -92,7 +92,7 @@
                 "device",
                 "monitor",
                 "-e",
-                "rymcu-esp32-s3-devkitc-1"
+                "rymcu-esp32-s3-arduino3x",
             ],
             "group": "test",
             "presentation": {
@@ -109,7 +109,7 @@
             "args": [
                 "run",
                 "-e",
-                "rymcu-esp32-s3-devkitc-1",
+                "rymcu-esp32-s3-arduino3x",
                 "-t",
                 "upload",
                 "-t",

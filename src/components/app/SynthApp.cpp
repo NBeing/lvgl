@@ -6,10 +6,15 @@
 #include "components/ui/HelloTab.h"
 #include "components/ui/WorldTab.h"
 #include "components/ui/SettingsTab.h"
+#include "components/ui/ClockTab.h"
+#include "components/midi/MidiClockManager.h"
+#include "components/midi/UnifiedMidiManager.h"
 #include "FontConfig.h"
 #include "Constants.h"
 #include <iostream>
+#if !defined(ESP32_BUILD)
 #include <unistd.h>  // For usleep on desktop
+#endif
 
 #if defined(ESP32_BUILD)
 #include "hardware/LGFX_ST7796S.h"
@@ -25,9 +30,25 @@ SynthApp::SynthApp()
 {
     #if defined(ESP32_BUILD)
         display_driver_.reset(new ESP32Display());
+    #else
+        // Initialize desktop pointers to nullptr
+        display_ = nullptr;
+        mouse_ = nullptr;
+        keyboard_ = nullptr;
+        mousewheel_ = nullptr;
     #endif
     
-    midi_handler_.reset(new MidiHandler());
+    midi_handler_ = std::shared_ptr<MidiHandler>(new MidiHandler());
+    std::cout << "[SynthApp] Constructor: Created MidiHandler at " << midi_handler_.get() << std::endl;
+    
+    // Initialize the MIDI handler immediately
+    if (midi_handler_->initialize()) {
+        std::cout << "[SynthApp] Constructor: MidiHandler initialized successfully" << std::endl;
+    } else {
+        std::cout << "[SynthApp] Constructor: MidiHandler initialization failed" << std::endl;
+    }
+    std::cout << "[SynthApp] Constructor: MidiHandler status: " << midi_handler_->getConnectionStatus() << std::endl;
+    
     parameter_binder_.reset(new ParameterBinder());
     command_manager_.reset(new CommandManager());
 }
@@ -78,9 +99,17 @@ void SynthApp::initHardware() {
         
         // Initialize display driver
         if (display_driver_) {
-            display_driver_->init();
+            display_driver_->initialize();
             std::cout << "[ESP32] Display driver initialized" << std::endl;
         }
+        
+        // Initialize unified MIDI system
+        std::cout << "[SynthApp] Before sharing - MidiHandler status: " << midi_handler_->getConnectionStatus() << std::endl;
+        std::cout << "[SynthApp] Before sharing - MidiHandler isConnected: " << midi_handler_->isConnected() << std::endl;
+        UnifiedMidiManager::setSharedMidiHandler(midi_handler_);
+        std::cout << "[SynthApp] After sharing - MidiHandler status: " << midi_handler_->getConnectionStatus() << std::endl;
+        std::cout << "[SynthApp] After sharing - MidiHandler isConnected: " << midi_handler_->isConnected() << std::endl;
+        UnifiedMidiManager::getInstance().initialize();
         
         // Configure for ESP32 environment
         LayoutManager::initialize();
@@ -88,11 +117,21 @@ void SynthApp::initHardware() {
     #else
         // Desktop initialization
         initDesktop();
+        
+        // Initialize unified MIDI system for desktop with shared MidiHandler
+        std::cout << "[SynthApp] Desktop - About to share MidiHandler at " << midi_handler_.get() << std::endl;
+        std::cout << "[SynthApp] Desktop - Before sharing - MidiHandler status: " << midi_handler_->getConnectionStatus() << std::endl;
+        std::cout << "[SynthApp] Desktop - Before sharing - MidiHandler isConnected: " << midi_handler_->isConnected() << std::endl;
+        UnifiedMidiManager::setSharedMidiHandler(midi_handler_);
+        std::cout << "[SynthApp] Desktop - After sharing - MidiHandler status: " << midi_handler_->getConnectionStatus() << std::endl;
+        std::cout << "[SynthApp] Desktop - After sharing - MidiHandler isConnected: " << midi_handler_->isConnected() << std::endl;
+        UnifiedMidiManager::getInstance().initialize();
     #endif
     
     std::cout << "Hardware initialization complete" << std::endl;
 }
 
+#if !defined(ESP32_BUILD)
 void SynthApp::initDesktop() {
     std::cout << "[Desktop] Initializing LVGL for desktop..." << std::endl;
     
@@ -116,6 +155,7 @@ void SynthApp::initDesktop() {
     
     std::cout << "[Desktop] LVGL initialized successfully (480x320 to match ESP32)" << std::endl;
 }
+#endif // !defined(ESP32_BUILD)
 
 void SynthApp::initWindowManager() {
     std::cout << "Initializing WindowManager..." << std::endl;
@@ -167,8 +207,12 @@ void SynthApp::createTabs() {
     settings_tab_ = std::make_unique<SettingsTab>();
     window_manager_->addTab(std::move(settings_tab_));
     
+    // Create Clock Tab
+    clock_tab_ = std::make_unique<ClockTab>();
+    window_manager_->addTab(std::move(clock_tab_));
+    
     // Main tab will be active by default (first tab added)
-    std::cout << "Created 4 tabs: Main, Hello, World, Settings" << std::endl;
+    std::cout << "Created 5 tabs: Main, Hello, World, Settings, Clock" << std::endl;
 }
 
 void SynthApp::loop() {
@@ -186,6 +230,12 @@ void SynthApp::loop() {
     if (window_manager_) {
         window_manager_->update();
     }
+    
+    // Update MIDI clock manager
+    MidiClockManager::getInstance().update();
+    
+    // Update unified MIDI manager
+    UnifiedMidiManager::getInstance().update();
 }
 
 // WindowObserver implementation
@@ -208,6 +258,42 @@ void SynthApp::simulateMidiCC() {
     std::cout << "Simulated MIDI CC74 = " << (int)test_value << std::endl;
 }
 
+void SynthApp::testHardwareMidi() {
+    auto& unified_midi = UnifiedMidiManager::getInstance();
+    
+    if (!unified_midi.isConnected()) {
+        std::cout << "Unified MIDI not connected" << std::endl;
+        return;
+    }
+    
+    std::cout << "=== Unified MIDI Test ===" << std::endl;
+    
+    // Show backend status
+    auto backends = unified_midi.getAvailableBackends();
+    for (const auto& backend : backends) {
+        std::cout << "Backend: " << backend.name << " - Status: " 
+                  << (backend.status == UnifiedMidiManager::ConnectionStatus::CONNECTED ? "Connected" : "Disconnected")
+                  << " - Sent: " << backend.messages_sent << std::endl;
+    }
+    
+    // Test note sequence
+    unified_midi.sendNoteOn(1, 60, 100);   // Middle C, velocity 100
+    unified_midi.sendNoteOff(1, 60, 0);    // Middle C off
+    
+    // Test control change
+    unified_midi.sendControlChange(1, 7, 127);  // Volume full
+    unified_midi.sendControlChange(1, 74, 64);  // Filter cutoff middle
+    
+    // Test program change
+    unified_midi.sendProgramChange(1, 10);  // Change to program 10
+    
+    std::cout << "Unified MIDI test complete - Total messages sent: " << unified_midi.getTotalMessagesSent() << std::endl;
+}
+
 bool SynthApp::isInitialized() const {
     return initialized_;
+}
+
+std::shared_ptr<MidiHandler> SynthApp::getMidiHandler() const {
+    return midi_handler_;
 }

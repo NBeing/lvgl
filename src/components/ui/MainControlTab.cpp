@@ -7,6 +7,7 @@
 #include "components/parameter/CommandManager.h"
 #include "components/parameter/Parameter.h"
 #include "hardware/MidiHandler.h"
+#include "components/midi/UnifiedMidiManager.h"
 #include "components/parameter/Command.h"  // For SetParameterCommand
 #include "Constants.h"
 #include <iostream>
@@ -126,9 +127,33 @@ void MainControlTab::setupButtonDefinitions() {
 }
 
 void MainControlTab::onParameterChanged(uint8_t value, const Parameter* param) {
-    // Send MIDI output
-    if (midi_handler_ && midi_handler_->isConnected() && param) {
-        midi_handler_->sendControlChange(1, param->getCCNumber(), value);
+    std::cout << "MainControlTab::onParameterChanged called with value: " << (int)value << std::endl;
+    
+    // Send MIDI output using UnifiedMidiManager (supports both USB and hardware MIDI)
+    if (param) {
+        std::cout << "Parameter is valid, CC: " << (int)param->getCCNumber() << std::endl;
+        auto& unified_midi = UnifiedMidiManager::getInstance();
+        std::cout << "Got UnifiedMidiManager instance" << std::endl;
+        
+        // Check overall status
+        auto overall_status = unified_midi.getOverallStatus();
+        std::cout << "UnifiedMidiManager overall status: " << (int)overall_status << std::endl;
+        
+        if (unified_midi.isConnected()) {
+            std::cout << "UnifiedMidiManager is connected - sending MIDI" << std::endl;
+            unified_midi.sendControlChange(1, param->getCCNumber(), value);
+            std::cout << "MIDI CC sent: CC" << (int)param->getCCNumber() << " = " << (int)value << std::endl;
+        } else {
+            std::cout << "UnifiedMidiManager is NOT connected!" << std::endl;
+            
+            // Check individual backends
+            auto backends = unified_midi.getAvailableBackends();
+            for (const auto& backend : backends) {
+                std::cout << "Backend: " << backend.name << " - Status: " << (int)backend.status << std::endl;
+            }
+        }
+    } else {
+        std::cout << "Parameter is NULL!" << std::endl;
     }
     
     // Create command for undo/redo
