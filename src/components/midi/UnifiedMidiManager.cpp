@@ -79,7 +79,7 @@ void UnifiedMidiManager::createBackends() {
 #if defined(ESP32_BUILD)
     // Add Hardware MIDI backend for ESP32 (Serial MIDI: TX on pin 3, RX on pin 46)
     auto hw_backend = std::make_unique<HardwareMidiBackend>();
-    hw_backend->setPins(3, 46); // TX on pin 3, RX on pin 46 for MIDI input
+    hw_backend->setPins(3, 5); // TX on pin 3, RX on pin 46 for MIDI input
     backends_.push_back(std::move(hw_backend));
     
     // Add USB MIDI backend for ESP32
