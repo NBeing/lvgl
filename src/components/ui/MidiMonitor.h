@@ -28,14 +28,16 @@ public:
 private:
     static const int MAX_DISPLAY_LINES = 15;
     
-    lv_obj_t* label_ = nullptr;  // Changed from textarea_ to label_
+    lv_obj_t* scroll_container_ = nullptr;  // Container for scrollable log lines
     bool is_active_ = false;
     
     // Display buffer for accumulated messages
     std::vector<std::string> display_lines_;
+    std::vector<lv_obj_t*> line_containers_;  // Store line containers for cleanup
     bool needs_update_ = false;
     
     void updateDisplay();
+    void createLogLine(const std::string& text, uint32_t text_color, bool is_alternate_bg);
 };
 
 } // namespace UI

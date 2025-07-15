@@ -30,37 +30,43 @@ void MidiMonitorTab::create(lv_obj_t* parent) {
 
     setContainer(container_);
 
-    // Create title
-    lv_obj_t* title = lv_label_create(container_);
-    lv_label_set_text(title, "MIDI Monitor");
-    lv_obj_set_style_text_color(title, lv_color_hex(SynthConstants::Color::TITLE), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
-
-    // Create subtitle
+    // Create subtitle with consistent styling
     lv_obj_t* subtitle = lv_label_create(container_);
     lv_label_set_text(subtitle, "Real-time MIDI input and output monitoring");
     lv_obj_set_style_text_color(subtitle, lv_color_hex(SynthConstants::Color::HELP), 0);
-    lv_obj_set_style_text_font(subtitle, &lv_font_montserrat_12, 0);
-    lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 50);
+    lv_obj_set_style_text_font(subtitle, FontA.small, 0);
+    lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 0);
 
-    // Create monitor with offset for title/subtitle
-    lv_obj_t* monitor_container = lv_obj_create(container_);
-    lv_obj_set_size(monitor_container, LV_PCT(98), LV_PCT(75));
-    lv_obj_set_style_bg_opa(monitor_container, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(monitor_container, 0, 0);
-    lv_obj_align(monitor_container, LV_ALIGN_TOP_MID, 0, 80);
+    // Create monitor with offset for title/subtitle using ContainerFactory
+    lv_obj_t* monitor_container = UI::createContainer({
+        .parent = container_,
+        .width_pct = 98,
+        .height_pct = 98,
+        .align = LV_ALIGN_TOP_MID,
+        .x_offset = 0,
+        .y_offset = 0,
+        .bg_color = lv_color_black(),
+        .bg_opa = LV_OPA_TRANSP,
+        .border_width = 0,
+        .use_bg_color = true
+    });
 
     monitor_.create(monitor_container);
 
-    // Add a clear button
+    // Add a clear button with consistent styling
     lv_obj_t* clear_btn = lv_btn_create(container_);
     lv_obj_set_size(clear_btn, 80, 30);
     lv_obj_align(clear_btn, LV_ALIGN_BOTTOM_RIGHT, -10, -10);
+    lv_obj_set_style_bg_color(clear_btn, lv_color_hex(SynthConstants::Color::BTN_FILTER_OFF), 0);
+    lv_obj_set_style_border_color(clear_btn, lv_color_hex(SynthConstants::Color::BTN_FILTER_ON), 0);
+    lv_obj_set_style_border_width(clear_btn, 1, 0);
+    
     lv_obj_t* label = lv_label_create(clear_btn);
     lv_label_set_text(label, "Clear");
     lv_obj_set_style_text_font(label, FontA.small, 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(label);
+    
     lv_obj_add_event_cb(clear_btn, [](lv_event_t* e){
         auto* tab = static_cast<MidiMonitorTab*>(lv_event_get_user_data(e));
         tab->getMonitor().clear();
