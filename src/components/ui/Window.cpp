@@ -83,8 +83,10 @@ void Tab::setActive(bool active) {
     
     if (active) {
         show();
+        onActivated();  // Call the virtual method for subclasses
     } else {
         hide();
+        onDeactivated();  // Call the virtual method for subclasses
     }
 }
 

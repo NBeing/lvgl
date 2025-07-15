@@ -7,6 +7,7 @@
 #include "components/ui/WorldTab.h"
 #include "components/ui/SettingsTab.h"
 #include "components/ui/ClockTab.h"
+#include "components/ui/MidiMonitorTab.h"
 #include "components/midi/MidiClockManager.h"
 #include "components/midi/UnifiedMidiManager.h"
 #include "FontConfig.h"
@@ -211,8 +212,18 @@ void SynthApp::createTabs() {
     clock_tab_ = std::make_unique<ClockTab>();
     window_manager_->addTab(std::move(clock_tab_));
     
+    // Create MIDI Monitor Tab
+    auto midi_monitor_unique = std::make_unique<MidiMonitorTab>();
+    midi_monitor_tab_ = midi_monitor_unique.get();  // Get raw pointer before move
+    window_manager_->addTab(std::move(midi_monitor_unique));
+    
+    // Connect the MIDI monitor to the UnifiedMidiManager for logging
+    UnifiedMidiManager::getInstance().setMidiMonitor(&midi_monitor_tab_->getMonitor());
+    
+    // No startup test - monitoring only when tab is active
+    
     // Main tab will be active by default (first tab added)
-    std::cout << "Created 5 tabs: Main, Hello, World, Settings, Clock" << std::endl;
+    std::cout << "Created 6 tabs: Main, Hello, World, Settings, Clock, MIDI Monitor" << std::endl;
 }
 
 void SynthApp::loop() {
@@ -236,6 +247,22 @@ void SynthApp::loop() {
     
     // Update unified MIDI manager
     UnifiedMidiManager::getInstance().update();
+    
+    // Update MIDI monitor safely in main loop context (all platforms)
+    if (midi_monitor_tab_) {
+        static int main_loop_counter = 0;
+        main_loop_counter++;
+        if (main_loop_counter % 500 == 0) {
+            std::cout << "[SynthApp] *** Main loop calling monitor update #" << main_loop_counter << " - tab exists!" << std::endl;
+        }
+        midi_monitor_tab_->getMonitor().update();
+    } else {
+        static int no_tab_counter = 0;
+        no_tab_counter++;
+        if (no_tab_counter % 1000 == 0) {
+            std::cout << "[SynthApp] *** WARNING: midi_monitor_tab_ is NULL! #" << no_tab_counter << std::endl;
+        }
+    }
 }
 
 // WindowObserver implementation

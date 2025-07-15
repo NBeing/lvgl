@@ -6,6 +6,8 @@
 #include "RtMidiBackend.h"
 #endif
 
+#include "components/ui/MidiMonitor.h"
+#include "components/ui/MidiLogQueue.h"
 #include <iostream>
 #include <algorithm>
 
@@ -15,6 +17,54 @@ static std::shared_ptr<MidiHandler> shared_midi_handler_ = nullptr;
 UnifiedMidiManager& UnifiedMidiManager::getInstance() {
     static UnifiedMidiManager instance;
     return instance;
+}
+
+void UnifiedMidiManager::setMidiMonitor(UI::MidiMonitor* monitor) {
+    midi_monitor_ = monitor;
+}
+
+void UnifiedMidiManager::logMidiInput(uint8_t status, uint8_t data1, uint8_t data2) {
+    // Use global queue - thread/interrupt safe!
+    uint8_t msg_type = status & 0xF0;
+    uint8_t channel = (status & 0x0F) + 1; // Convert to 1-based
+    char buf[75]; // Fit in queue message size
+    
+    switch (msg_type) {
+        case 0x90:
+            if (data2 > 0) {
+                snprintf(buf, sizeof(buf), "NoteOn ch%d %d %d", channel, data1, data2);
+            } else {
+                snprintf(buf, sizeof(buf), "NoteOff ch%d %d %d", channel, data1, data2);
+            }
+            break;
+        case 0x80:
+            snprintf(buf, sizeof(buf), "NoteOff ch%d %d %d", channel, data1, data2);
+            break;
+        case 0xB0:
+            snprintf(buf, sizeof(buf), "CC ch%d %d %d", channel, data1, data2);
+            break;
+        case 0xC0:
+            snprintf(buf, sizeof(buf), "PC ch%d %d", channel, data1);
+            break;
+        case 0xE0:
+            snprintf(buf, sizeof(buf), "PB ch%d %d", channel, (data2 << 7) | data1);
+            break;
+        default:
+            if (status >= 0xF8) {
+                snprintf(buf, sizeof(buf), "RT 0x%02X", status);
+            } else {
+                snprintf(buf, sizeof(buf), "?? 0x%02X %d %d", status, data1, data2);
+            }
+            break;
+    }
+    
+    UI::MidiLogQueue::getInstance().logInput(buf);
+}
+
+// Global callback function to avoid circular dependency
+extern "C" void logHardwareMidiInput(uint8_t status, uint8_t data1, uint8_t data2) {
+    // Now always safe with global queue approach!
+    UnifiedMidiManager::getInstance().logMidiInput(status, data1, data2);
 }
 
 void UnifiedMidiManager::setSharedMidiHandler(std::shared_ptr<MidiHandler> handler) {
@@ -79,7 +129,7 @@ void UnifiedMidiManager::createBackends() {
 #if defined(ESP32_BUILD)
     // Add Hardware MIDI backend for ESP32 (Serial MIDI: TX on pin 3, RX on pin 46)
     auto hw_backend = std::make_unique<HardwareMidiBackend>();
-    hw_backend->setPins(3, 5); // TX on pin 3, RX on pin 46 for MIDI input
+    hw_backend->setPins(3, 5); // TX on pin 3, RX on pin 5 for MIDI input
     backends_.push_back(std::move(hw_backend));
     
     // Add USB MIDI backend for ESP32
@@ -134,6 +184,12 @@ bool UnifiedMidiManager::isBackendEnabled(BackendType type) const {
 // MIDI Output methods - send to all connected backends
 void UnifiedMidiManager::sendNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
     uint8_t status = 0x90 | ((channel - 1) & 0x0F); // Convert to 0-15 range
+    
+    // Log to global queue - safe on all platforms!
+    char buf[60];
+    snprintf(buf, sizeof(buf), "NoteOn ch%d %d %d", channel, note, velocity);
+    UI::MidiLogQueue::getInstance().logOutput(buf);
+    
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(status, note & 0x7F, velocity & 0x7F);
@@ -143,6 +199,12 @@ void UnifiedMidiManager::sendNoteOn(uint8_t channel, uint8_t note, uint8_t veloc
 
 void UnifiedMidiManager::sendNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) {
     uint8_t status = 0x80 | ((channel - 1) & 0x0F);
+    
+    // Log to global queue - safe on all platforms!
+    char buf[60];
+    snprintf(buf, sizeof(buf), "NoteOff ch%d %d %d", channel, note, velocity);
+    UI::MidiLogQueue::getInstance().logOutput(buf);
+    
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(status, note & 0x7F, velocity & 0x7F);
@@ -152,6 +214,12 @@ void UnifiedMidiManager::sendNoteOff(uint8_t channel, uint8_t note, uint8_t velo
 
 void UnifiedMidiManager::sendControlChange(uint8_t channel, uint8_t cc, uint8_t value) {
     uint8_t status = 0xB0 | ((channel - 1) & 0x0F);
+    
+    // Log to global queue - safe on all platforms!
+    char buf[60];
+    snprintf(buf, sizeof(buf), "CC ch%d %d %d", channel, cc, value);
+    UI::MidiLogQueue::getInstance().logOutput(buf);
+    
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(status, cc & 0x7F, value & 0x7F);
@@ -161,6 +229,13 @@ void UnifiedMidiManager::sendControlChange(uint8_t channel, uint8_t cc, uint8_t 
 
 void UnifiedMidiManager::sendProgramChange(uint8_t channel, uint8_t program) {
     uint8_t status = 0xC0 | ((channel - 1) & 0x0F);
+#if !defined(ESP32_BUILD)
+    if (midi_monitor_) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "ProgramChange ch%d %d", channel, program);
+        midi_monitor_->logOutput(buf);
+    }
+#endif
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(status, program & 0x7F, 0);
@@ -172,6 +247,13 @@ void UnifiedMidiManager::sendPitchBend(uint8_t channel, uint16_t value) {
     uint8_t status = 0xE0 | ((channel - 1) & 0x0F);
     uint8_t lsb = value & 0x7F;
     uint8_t msb = (value >> 7) & 0x7F;
+#if !defined(ESP32_BUILD)
+    if (midi_monitor_) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "PitchBend ch%d %d", channel, value);
+        midi_monitor_->logOutput(buf);
+    }
+#endif
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(status, lsb, msb);
@@ -180,6 +262,9 @@ void UnifiedMidiManager::sendPitchBend(uint8_t channel, uint16_t value) {
 }
 
 void UnifiedMidiManager::sendClockPulse() {
+#if !defined(ESP32_BUILD)
+    if (midi_monitor_) midi_monitor_->logOutput("ClockPulse");
+#endif
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xF8); // MIDI Clock
@@ -188,6 +273,9 @@ void UnifiedMidiManager::sendClockPulse() {
 }
 
 void UnifiedMidiManager::sendStart() {
+#if !defined(ESP32_BUILD)
+    if (midi_monitor_) midi_monitor_->logOutput("Start");
+#endif
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xFA); // MIDI Start
@@ -196,6 +284,9 @@ void UnifiedMidiManager::sendStart() {
 }
 
 void UnifiedMidiManager::sendStop() {
+#if !defined(ESP32_BUILD)
+    if (midi_monitor_) midi_monitor_->logOutput("Stop");
+#endif
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xFC); // MIDI Stop
@@ -204,6 +295,9 @@ void UnifiedMidiManager::sendStop() {
 }
 
 void UnifiedMidiManager::sendContinue() {
+#if !defined(ESP32_BUILD)
+    if (midi_monitor_) midi_monitor_->logOutput("Continue");
+#endif
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xFB); // MIDI Continue
@@ -212,6 +306,9 @@ void UnifiedMidiManager::sendContinue() {
 }
 
 void UnifiedMidiManager::sendSystemReset() {
+#if !defined(ESP32_BUILD)
+    if (midi_monitor_) midi_monitor_->logOutput("SystemReset");
+#endif
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xFF); // System Reset
@@ -220,6 +317,9 @@ void UnifiedMidiManager::sendSystemReset() {
 }
 
 void UnifiedMidiManager::sendActiveSensing() {
+#if !defined(ESP32_BUILD)
+    if (midi_monitor_) midi_monitor_->logOutput("ActiveSensing");
+#endif
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xFE); // Active Sensing

@@ -6,6 +6,9 @@
 #include <functional>
 #include <string>
 
+// Forward declaration to avoid include dependency
+namespace UI { class MidiMonitor; }
+
 /**
  * @brief Unified MIDI Manager - handles both hardware and USB MIDI
  * 
@@ -16,6 +19,12 @@
  */
 class UnifiedMidiManager {
 public:
+    // Attach a UI MIDI monitor
+    void setMidiMonitor(UI::MidiMonitor* monitor);
+    UI::MidiMonitor* getMidiMonitor() const { return midi_monitor_; }
+    
+    // Log MIDI input messages to the monitor
+    void logMidiInput(uint8_t status, uint8_t data1, uint8_t data2);
     // MIDI message callback type
     using MidiMessageCallback = std::function<void(uint8_t status, uint8_t data1, uint8_t data2)>;
     
@@ -111,6 +120,7 @@ public:
     };
 
 private:
+    UI::MidiMonitor* midi_monitor_ = nullptr;
     UnifiedMidiManager() = default;
     ~UnifiedMidiManager() = default;
     UnifiedMidiManager(const UnifiedMidiManager&) = delete;

@@ -11,6 +11,7 @@
 #include "components/ui/WorldTab.h"
 #include "components/ui/SettingsTab.h"
 #include "components/ui/ClockTab.h"
+#include "components/ui/MidiMonitorTab.h"
 #include "hardware/MidiHandler.h"
 
 #if defined(ESP32_BUILD)
@@ -48,6 +49,7 @@ private:
     std::unique_ptr<WorldTab> world_tab_;
     std::unique_ptr<SettingsTab> settings_tab_;
     std::unique_ptr<ClockTab> clock_tab_;
+    MidiMonitorTab* midi_monitor_tab_;  // Raw pointer since WindowManager owns it
     
 public:
     SynthApp();

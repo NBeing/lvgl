@@ -1,6 +1,12 @@
 #include "HardwareMidiBackend.h"
 #include <iostream>
 
+// Forward declaration to avoid circular dependency
+class UnifiedMidiManager;
+
+// External callback function declaration
+extern "C" void logHardwareMidiInput(uint8_t status, uint8_t data1, uint8_t data2);
+
 HardwareMidiBackend::HardwareMidiBackend() {
     // Constructor
 }
@@ -35,6 +41,8 @@ bool HardwareMidiBackend::initialize() {
     if (rx_pin_ != -1) {
         std::cout << "[Hardware MIDI] MIDI input enabled on pin " << rx_pin_ << std::endl;
     }
+    
+    // No test callback - monitoring only when tab is active
     
     return true;
 #else
@@ -182,34 +190,37 @@ void HardwareMidiBackend::handleCompleteMessage(uint8_t status, uint8_t data1, u
     uint8_t msg_type = status & 0xF0;
     uint8_t channel = (status & 0x0F) + 1; // Convert to 1-based
     
-    std::cout << "[Hardware MIDI] Received: ";
+    // std::cout << "[Hardware MIDI] Received: ";  // DISABLED FOR DEBUG
     
     switch (msg_type) {
         case 0x90:
-            std::cout << "Note On Ch" << (int)channel << " Note:" << (int)data1 << " Vel:" << (int)data2;
+            // std::cout << "Note On Ch" << (int)channel << " Note:" << (int)data1 << " Vel:" << (int)data2;
             break;
         case 0x80:
-            std::cout << "Note Off Ch" << (int)channel << " Note:" << (int)data1 << " Vel:" << (int)data2;
+            // std::cout << "Note Off Ch" << (int)channel << " Note:" << (int)data1 << " Vel:" << (int)data2;
             break;
         case 0xB0:
-            std::cout << "CC Ch" << (int)channel << " CC:" << (int)data1 << " Val:" << (int)data2;
+            // std::cout << "CC Ch" << (int)channel << " CC:" << (int)data1 << " Val:" << (int)data2;
             break;
         case 0xC0:
-            std::cout << "Program Change Ch" << (int)channel << " Program:" << (int)data1;
+            // std::cout << "Program Change Ch" << (int)channel << " Program:" << (int)data1;
             break;
         case 0xE0:
-            std::cout << "Pitch Bend Ch" << (int)channel << " Value:" << ((data2 << 7) | data1);
+            // std::cout << "Pitch Bend Ch" << (int)channel << " Value:" << ((data2 << 7) | data1);
             break;
         default:
             if (status >= 0xF8) {
-                std::cout << "Real-time: 0x" << std::hex << (int)status << std::dec;
+                // std::cout << "Real-time: 0x" << std::hex << (int)status << std::dec;
             } else {
-                std::cout << "0x" << std::hex << (int)status << " 0x" << (int)data1 << " 0x" << (int)data2 << std::dec;
+                // std::cout << "0x" << std::hex << (int)status << " 0x" << (int)data1 << " 0x" << (int)data2 << std::dec;
             }
             break;
     }
     
-    std::cout << std::endl;
+    // std::cout << std::endl;  // DISABLED FOR DEBUG
+    
+    // Forward to MIDI monitor via callback to avoid circular dependency
+    logHardwareMidiInput(status, data1, data2);
     
     // TODO: Forward to callback system for parameter updates
     // For now, just log the received message
