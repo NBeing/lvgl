@@ -24,41 +24,17 @@ void UnifiedMidiManager::setMidiMonitor(UI::MidiMonitor* monitor) {
 }
 
 void UnifiedMidiManager::logMidiInput(uint8_t status, uint8_t data1, uint8_t data2) {
-    // Use global queue - thread/interrupt safe!
-    uint8_t msg_type = status & 0xF0;
-    uint8_t channel = (status & 0x0F) + 1; // Convert to 1-based
-    char buf[75]; // Fit in queue message size
+    // Use the enhanced logging with detailed parsing
+    char hex_data[32];
+    char friendly_name[48];
     
-    switch (msg_type) {
-        case 0x90:
-            if (data2 > 0) {
-                snprintf(buf, sizeof(buf), "NoteOn ch%d %d %d", channel, data1, data2);
-            } else {
-                snprintf(buf, sizeof(buf), "NoteOff ch%d %d %d", channel, data1, data2);
-            }
-            break;
-        case 0x80:
-            snprintf(buf, sizeof(buf), "NoteOff ch%d %d %d", channel, data1, data2);
-            break;
-        case 0xB0:
-            snprintf(buf, sizeof(buf), "CC ch%d %d %d", channel, data1, data2);
-            break;
-        case 0xC0:
-            snprintf(buf, sizeof(buf), "PC ch%d %d", channel, data1);
-            break;
-        case 0xE0:
-            snprintf(buf, sizeof(buf), "PB ch%d %d", channel, (data2 << 7) | data1);
-            break;
-        default:
-            if (status >= 0xF8) {
-                snprintf(buf, sizeof(buf), "RT 0x%02X", status);
-            } else {
-                snprintf(buf, sizeof(buf), "?? 0x%02X %d %d", status, data1, data2);
-            }
-            break;
-    }
-    
-    UI::MidiLogQueue::getInstance().logInput(buf);
+    UI::MidiLogQueue::parseMidiMessage(status, data1, data2, hex_data, friendly_name);
+    UI::MidiLogQueue::getInstance().logMidiMessage(
+        UI::MidiLogQueue::LogEntry::MIDI_INPUT,
+        UI::MidiLogQueue::LogEntry::HARDWARE,  // Assume hardware for now
+        hex_data,
+        friendly_name
+    );
 }
 
 // Global callback function to avoid circular dependency
@@ -78,6 +54,15 @@ void UnifiedMidiManager::initialize() {
     std::cout << "=== Unified MIDI Manager Initializing ===" << std::endl;
     
     createBackends();
+    
+    std::cout << "=== MIDI Manager initialized with " << backends_.size() << " backends ===" << std::endl;
+    for (size_t i = 0; i < backends_.size(); ++i) {
+        auto& backend = backends_[i];
+        std::cout << "Backend " << i << ": " << backend->getName() 
+                  << " - Status: " << (int)backend->getStatus() 
+                  << " - Input: " << (backend->supportsInput() ? "YES" : "NO")
+                  << " - Output: " << (backend->supportsOutput() ? "YES" : "NO") << std::endl;
+    }
     
     // Try to initialize all available backends
     for (auto& backend : backends_) {
@@ -185,10 +170,16 @@ bool UnifiedMidiManager::isBackendEnabled(BackendType type) const {
 void UnifiedMidiManager::sendNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
     uint8_t status = 0x90 | ((channel - 1) & 0x0F); // Convert to 0-15 range
     
-    // Log to global queue - safe on all platforms!
-    char buf[60];
-    snprintf(buf, sizeof(buf), "NoteOn ch%d %d %d", channel, note, velocity);
-    UI::MidiLogQueue::getInstance().logOutput(buf);
+    // Log to global queue using enhanced format
+    char hex_data[32];
+    char friendly_name[48];
+    UI::MidiLogQueue::parseMidiMessage(status, note, velocity, hex_data, friendly_name);
+    UI::MidiLogQueue::getInstance().logMidiMessage(
+        UI::MidiLogQueue::LogEntry::MIDI_OUTPUT,
+        UI::MidiLogQueue::LogEntry::HARDWARE,  // Assume hardware for now
+        hex_data,
+        friendly_name
+    );
     
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
@@ -200,10 +191,16 @@ void UnifiedMidiManager::sendNoteOn(uint8_t channel, uint8_t note, uint8_t veloc
 void UnifiedMidiManager::sendNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) {
     uint8_t status = 0x80 | ((channel - 1) & 0x0F);
     
-    // Log to global queue - safe on all platforms!
-    char buf[60];
-    snprintf(buf, sizeof(buf), "NoteOff ch%d %d %d", channel, note, velocity);
-    UI::MidiLogQueue::getInstance().logOutput(buf);
+    // Log to global queue using enhanced format
+    char hex_data[32];
+    char friendly_name[48];
+    UI::MidiLogQueue::parseMidiMessage(status, note, velocity, hex_data, friendly_name);
+    UI::MidiLogQueue::getInstance().logMidiMessage(
+        UI::MidiLogQueue::LogEntry::MIDI_OUTPUT,
+        UI::MidiLogQueue::LogEntry::HARDWARE,  // Assume hardware for now
+        hex_data,
+        friendly_name
+    );
     
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
@@ -215,10 +212,16 @@ void UnifiedMidiManager::sendNoteOff(uint8_t channel, uint8_t note, uint8_t velo
 void UnifiedMidiManager::sendControlChange(uint8_t channel, uint8_t cc, uint8_t value) {
     uint8_t status = 0xB0 | ((channel - 1) & 0x0F);
     
-    // Log to global queue - safe on all platforms!
-    char buf[60];
-    snprintf(buf, sizeof(buf), "CC ch%d %d %d", channel, cc, value);
-    UI::MidiLogQueue::getInstance().logOutput(buf);
+    // Log to global queue using enhanced format
+    char hex_data[32];
+    char friendly_name[48];
+    UI::MidiLogQueue::parseMidiMessage(status, cc, value, hex_data, friendly_name);
+    UI::MidiLogQueue::getInstance().logMidiMessage(
+        UI::MidiLogQueue::LogEntry::MIDI_OUTPUT,
+        UI::MidiLogQueue::LogEntry::HARDWARE,  // Assume hardware for now
+        hex_data,
+        friendly_name
+    );
     
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {

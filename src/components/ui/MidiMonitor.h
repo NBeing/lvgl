@@ -25,11 +25,19 @@ public:
     }
     bool isActive() const { return is_active_; }
     
+    // Display options
+    void setShowTimestamp(bool show) { show_timestamp_ = show; }
+    void setShowHexData(bool show) { show_hex_data_ = show; }
+    bool getShowTimestamp() const { return show_timestamp_; }
+    bool getShowHexData() const { return show_hex_data_; }
+    
 private:
     static const int MAX_DISPLAY_LINES = 15;
     
     lv_obj_t* scroll_container_ = nullptr;  // Container for scrollable log lines
     bool is_active_ = false;
+    bool show_timestamp_ = true;   // Show timestamp column
+    bool show_hex_data_ = true;    // Show hex data column
     
     // Display buffer for accumulated messages
     std::vector<std::string> display_lines_;
@@ -38,6 +46,7 @@ private:
     
     void updateDisplay();
     void createLogLine(const std::string& text, uint32_t text_color, bool is_alternate_bg);
+    std::string formatLogEntry(const MidiLogQueue::LogEntry& entry);
 };
 
 } // namespace UI

@@ -3,6 +3,8 @@
 #include "FontConfig.h"
 #include <sstream>
 #include <iostream>
+#include <iomanip>
+#include <cstring>
 
 namespace UI {
 
@@ -108,11 +110,12 @@ void MidiMonitor::update() {
     int message_count = 0;
     
     while (MidiLogQueue::getInstance().popEntry(entry) && message_count < 10) {
-        std::cout << "[MIDI Monitor] *** PROCESSING QUEUE MESSAGE (#" << update_counter << "): " << entry.message << std::endl;
-        std::string line = (entry.type == MidiLogQueue::LogEntry::MIDI_INPUT ? "[IN]  " : "[OUT] ");
-        line += entry.message;
+        std::cout << "[MIDI Monitor] *** PROCESSING QUEUE MESSAGE (#" << update_counter << "): " << entry.friendly_name << std::endl;
         
-        display_lines_.push_back(line);
+        // Format the entry for display using the new enhanced format
+        std::string formatted_line = formatLogEntry(entry);
+        display_lines_.push_back(formatted_line);
+        
         if (display_lines_.size() > MAX_DISPLAY_LINES) {
             display_lines_.erase(display_lines_.begin());
         }
@@ -180,14 +183,14 @@ void MidiMonitor::updateDisplay() {
     } else {
         std::cout << "[MIDI Monitor] Adding " << display_lines_.size() << " lines to display" << std::endl;
         for (size_t i = 0; i < display_lines_.size(); ++i) {
-            // Determine color based on message type
+            // Determine color based on message content
             uint32_t color = 0x839496;  // Default gray
             
-            if (display_lines_[i].find("[IN]") == 0) {
+            if (display_lines_[i].find(" IN ") != std::string::npos) {
                 // Input messages in cooler colors (cyan, blue, green)
                 const uint32_t input_colors[] = {0x2aa198, 0x268bd2, 0x859900};
                 color = input_colors[i % 3];
-            } else if (display_lines_[i].find("[OUT]") == 0) {
+            } else if (display_lines_[i].find(" OUT ") != std::string::npos) {
                 // Output messages in warmer colors (yellow, orange tones)
                 const uint32_t output_colors[] = {0xb58900, 0xcb4b16, 0xdc322f};
                 color = output_colors[i % 3];
@@ -203,6 +206,37 @@ void MidiMonitor::updateDisplay() {
     lv_obj_scroll_to_y(scroll_container_, LV_COORD_MAX, LV_ANIM_ON);
     
     std::cout << "[MIDI Monitor] *** Display updated with alternating backgrounds" << std::endl;
+}
+
+std::string MidiMonitor::formatLogEntry(const MidiLogQueue::LogEntry& entry) {
+    std::ostringstream oss;
+    
+    // Timestamp (optional)
+    if (show_timestamp_) {
+        oss << "[" << std::setw(5) << std::setfill('0') << (entry.timestamp % 100000) << "] ";
+    }
+    
+    // Source
+    const char* source_str = "HW";
+    switch (entry.source) {
+        case MidiLogQueue::LogEntry::HARDWARE: source_str = "HW"; break;
+        case MidiLogQueue::LogEntry::USB: source_str = "USB"; break;
+        case MidiLogQueue::LogEntry::INTERNAL: source_str = "INT"; break;
+    }
+    oss << source_str << " ";
+    
+    // Direction
+    oss << (entry.type == MidiLogQueue::LogEntry::MIDI_INPUT ? "IN " : "OUT") << " ";
+    
+    // Hex data (optional)
+    if (show_hex_data_ && strlen(entry.hex_data) > 0) {
+        oss << std::setw(8) << std::left << entry.hex_data << " ";
+    }
+    
+    // Friendly name
+    oss << entry.friendly_name;
+    
+    return oss.str();
 }
 
 void MidiMonitor::clear() {

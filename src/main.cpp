@@ -36,20 +36,6 @@ void loop() {
 }
 #else
 int main() {
-    std::cout << "=== Desktop SynthApp Starting ===" << std::endl;
-    
-    // Initialize MIDI test with debug info
-    std::cout << "🔧 Initializing MIDI handler..." << std::endl;
-    if (midi_handler.initialize()) {
-        std::cout << "✅ MIDI Test initialized: " << midi_handler.getConnectionStatus() << std::endl;
-        std::cout << "💡 Check 'aconnect -l' in another terminal to see the new MIDI port" << std::endl;
-        std::cout << "💡 You can also try: pw-link --list-ports | grep -i midi" << std::endl;
-    } else {
-        std::cout << "❌ MIDI Test initialization failed!" << std::endl;
-        std::cout << "💡 Make sure ALSA development libraries are installed:" << std::endl;
-        std::cout << "   sudo apt-get install libasound2-dev" << std::endl;
-    }
-    
     app.setup();
     
     while (true) {

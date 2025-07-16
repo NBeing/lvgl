@@ -15,6 +15,9 @@
     #include <string>
 #endif
 
+// Forward declaration of the MIDI logging function
+extern "C" void logHardwareMidiInput(uint8_t status, uint8_t data1, uint8_t data2);
+
 class MidiHandler {
 private:
     bool initialized_;
@@ -24,6 +27,7 @@ private:
         USBMIDI_Interface midi_interface_;
     #else
         std::unique_ptr<RtMidiOut> midi_out_;
+        std::unique_ptr<RtMidiIn> midi_in_;
         unsigned int current_port_;
         std::vector<std::string> available_ports_;
     #endif
@@ -38,13 +42,77 @@ public:
         #if !defined(ESP32_BUILD)
             try {
                 midi_out_ = std::make_unique<RtMidiOut>();
+                midi_in_ = std::make_unique<RtMidiIn>();
                 current_port_ = 0;
-                std::cout << "MidiHandler " << this << " - RtMidiOut created" << std::endl;
+                std::cout << "MidiHandler " << this << " - RtMidiOut and RtMidiIn created" << std::endl;
             } catch (RtMidiError& error) {
                 std::cerr << "RtMidi initialization error: " << error.getMessage() << std::endl;
             }
         #endif
     }
+    
+    #if !defined(ESP32_BUILD)
+    void setupMidiInput() {
+        if (!midi_in_) return;
+        
+        try {
+            // Set up MIDI input callback
+            midi_in_->setCallback([](double /*timeStamp*/, std::vector<unsigned char>* message, void* /*userData*/) {
+                if (message->size() >= 1) {
+                    uint8_t status = (*message)[0];
+                    uint8_t data1 = message->size() > 1 ? (*message)[1] : 0;
+                    uint8_t data2 = message->size() > 2 ? (*message)[2] : 0;
+                    
+                    std::cout << "[RtMidi Input] Received: " << std::hex 
+                              << (int)status << " " << (int)data1 << " " << (int)data2 << std::dec << std::endl;
+                    
+                    // Forward to UnifiedMidiManager
+                    logHardwareMidiInput(status, data1, data2);
+                }
+            });
+            
+            // Don't ignore sysex, timing, or active sensing messages
+            midi_in_->ignoreTypes(false, false, false);
+            
+            // Scan for input ports and open the first hardware MIDI port
+            unsigned int input_port_count = midi_in_->getPortCount();
+            std::cout << "[RtMidi Input] Found " << input_port_count << " input ports" << std::endl;
+            
+            if (input_port_count == 0) {
+                std::cout << "[RtMidi Input] ❌ No MIDI input ports available!" << std::endl;
+                return;
+            }
+            
+            for (unsigned int i = 0; i < input_port_count; i++) {
+                try {
+                    std::string port_name = midi_in_->getPortName(i);
+                    std::cout << "  Input Port " << i << ": " << port_name << std::endl;
+                    
+                    // Look for hardware MIDI port (avoid software/virtual ports)
+                    if (port_name.find("Midi Through") == std::string::npos &&
+                        port_name.find("Virtual") == std::string::npos) {
+                        midi_in_->openPort(i);
+                        std::cout << "🎹 Desktop MIDI INPUT: Connected to port " << i << ": " << port_name << std::endl;
+                        return; // Successfully opened input
+                    }
+                } catch (RtMidiError& error) {
+                    std::cerr << "Error getting input port " << i << " name: " << error.getMessage() << std::endl;
+                }
+            }
+            
+            // If no hardware ports found, try opening the first available port
+            if (input_port_count > 0) {
+                midi_in_->openPort(0);
+                std::cout << "🎹 Desktop MIDI INPUT: Connected to first available port" << std::endl;
+            } else {
+                std::cout << "⚠️  Desktop MIDI INPUT: No input ports available" << std::endl;
+            }
+            
+        } catch (RtMidiError& error) {
+            std::cerr << "Desktop MIDI input setup failed: " << error.getMessage() << std::endl;
+        }
+    }
+    #endif
     
     bool initialize() {
         #if defined(ESP32_BUILD)
@@ -60,9 +128,12 @@ public:
             return true;
         #else
             // Initialize RtMidi on desktop
-            if (!midi_out_) return false;
+            if (!midi_out_ || !midi_in_) return false;
             
             try {
+                // Setup MIDI Input first
+                setupMidiInput();
+                
                 // Scan for available MIDI ports
                 unsigned int port_count = midi_out_->getPortCount();
                 available_ports_.clear();
@@ -79,16 +150,24 @@ public:
                     }
                 }
                 
-                // Try to open the first available port, or create a virtual port
-                if (available_ports_.size() > 0) {
-                    // Open existing port
-                    midi_out_->openPort(0);
-                    current_port_ = 0;
-                    std::cout << "Desktop MIDI: Connected to port 0: " << available_ports_[0] << std::endl;
-                } else {
-                    // Create virtual port
-                    midi_out_->openVirtualPort("LVGL Synth Controller");
-                    std::cout << "Desktop MIDI: Created virtual port 'LVGL Synth Controller'" << std::endl;
+                // Try to find a suitable output port (avoid Midi Through to prevent loops)
+                bool found_output_port = false;
+                for (unsigned int i = 0; i < available_ports_.size(); i++) {
+                    // Skip Midi Through and our own input clients to prevent MIDI loops
+                    if (available_ports_[i].find("Midi Through") == std::string::npos &&
+                        available_ports_[i].find("RtMidi Input") == std::string::npos) {
+                        midi_out_->openPort(i);
+                        current_port_ = i;
+                        std::cout << "Desktop MIDI: Connected to port " << i << ": " << available_ports_[i] << std::endl;
+                        found_output_port = true;
+                        break;
+                    }
+                }
+                
+                if (!found_output_port) {
+                    // Create virtual port to avoid loops
+                    midi_out_->openVirtualPort("LVGL Synth Output");
+                    std::cout << "Desktop MIDI: Created virtual port 'LVGL Synth Output'" << std::endl;
                 }
                 
                 initialized_ = true;
