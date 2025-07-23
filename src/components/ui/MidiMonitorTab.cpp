@@ -89,35 +89,6 @@ void MidiMonitorTab::create(lv_obj_t* parent) {
         }
     }, LV_EVENT_CLICKED, this);
 
-    // Test MIDI button
-    lv_obj_t* test_btn = lv_btn_create(container_);
-    lv_obj_set_size(test_btn, 80, 30);
-    lv_obj_align(test_btn, LV_ALIGN_BOTTOM_LEFT, 120, -10);
-    lv_obj_set_style_bg_color(test_btn, lv_color_hex(0x0066CC), 0); // Blue
-    lv_obj_set_style_border_color(test_btn, lv_color_hex(0x0099FF), 0);
-    lv_obj_set_style_border_width(test_btn, 1, 0);
-    
-    lv_obj_t* test_label = lv_label_create(test_btn);
-    lv_label_set_text(test_label, "Test MIDI");
-    lv_obj_set_style_text_font(test_label, FontA.small, 0);
-    lv_obj_set_style_text_color(test_label, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_center(test_label);
-    
-    lv_obj_add_event_cb(test_btn, [](lv_event_t* e){
-        std::cout << "[Test Button] Injecting test MIDI message" << std::endl;
-        
-        // Inject a test message using the enhanced logging
-        UI::MidiLogQueue::getInstance().logMidiMessage(
-            UI::MidiLogQueue::LogEntry::MIDI_INPUT,
-            UI::MidiLogQueue::LogEntry::INTERNAL,
-            "90 3C 7F",
-            "Test MIDI message from button"
-        );
-        
-        auto* tab = static_cast<MidiMonitorTab*>(lv_event_get_user_data(e));
-        tab->getMonitor().update(); // Force immediate update
-    }, LV_EVENT_CLICKED, this);
-
     // Timestamp toggle button
     lv_obj_t* timestamp_btn = lv_btn_create(container_);
     lv_obj_set_size(timestamp_btn, 80, 30);

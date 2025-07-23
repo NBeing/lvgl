@@ -18,11 +18,14 @@ ClockTab::ClockTab()
     , tempo_display_(nullptr)
     , ppqn_dropdown_(nullptr)
     , clock_mode_dropdown_(nullptr)
+    , sync_source_dropdown_(nullptr)
+    , auto_detect_checkbox_(nullptr)
     , midi_test_btn_(nullptr)
     , clock_status_label_(nullptr)
     , tick_rate_label_(nullptr)
     , beat_indicator_(nullptr)
     , sync_status_label_(nullptr)
+    , active_source_label_(nullptr)
     , beat_led_(nullptr)
     , beat_led_state_(false)
     , last_beat_(0)
@@ -251,16 +254,71 @@ void ClockTab::createSettingsPanel() {
 
     // Section title
     lv_obj_t* settings_title = lv_label_create(settings_container_);
-    lv_label_set_text(settings_title, "Quick Settings");
+    lv_label_set_text(settings_title, "Sync Source Settings");
     lv_obj_set_style_text_color(settings_title, lv_color_hex(0xCDD6F4), 0);
     lv_obj_set_style_text_font(settings_title, FontA.small, 0);
 
-    // Note: For now, just display current settings
-    // TODO: Add quick setting controls if needed
-    lv_obj_t* settings_note = lv_label_create(settings_container_);
-    lv_label_set_text(settings_note, "Use the Settings tab to configure MIDI clock options");
-    lv_obj_set_style_text_color(settings_note, lv_color_hex(0x9399B2), 0);
-    lv_obj_set_style_text_font(settings_note, FontA.small, 0);
+    // Create controls layout
+    lv_obj_t* controls_grid = lv_obj_create(settings_container_);
+    lv_obj_set_size(controls_grid, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(controls_grid, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(controls_grid, 0, 0);
+    lv_obj_set_style_pad_all(controls_grid, 5, 0);
+    lv_obj_set_layout(controls_grid, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(controls_grid, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(controls_grid, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_row(controls_grid, 8, 0);
+
+    // Sync Source Dropdown
+    lv_obj_t* sync_source_row = lv_obj_create(controls_grid);
+    lv_obj_set_size(sync_source_row, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(sync_source_row, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(sync_source_row, 0, 0);
+    lv_obj_set_style_pad_all(sync_source_row, 0, 0);
+    lv_obj_set_layout(sync_source_row, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(sync_source_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(sync_source_row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t* sync_source_label = lv_label_create(sync_source_row);
+    lv_label_set_text(sync_source_label, "Sync Source:");
+    lv_obj_set_style_text_color(sync_source_label, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_text_font(sync_source_label, FontA.small, 0);
+
+    sync_source_dropdown_ = lv_dropdown_create(sync_source_row);
+    lv_dropdown_set_options(sync_source_dropdown_, "Internal\nUSB MIDI\nHardware MIDI\nSoftware\nAuto-Detect");
+    lv_obj_set_size(sync_source_dropdown_, 120, LV_SIZE_CONTENT);
+    lv_obj_set_style_text_font(sync_source_dropdown_, FontA.small, 0);
+    lv_obj_add_event_cb(sync_source_dropdown_, [](lv_event_t* e) {
+        auto* tab = static_cast<ClockTab*>(lv_event_get_user_data(e));
+        int selected = lv_dropdown_get_selected(static_cast<lv_obj_t*>(lv_event_get_target(e)));
+        tab->onSyncSourceChanged(selected);
+    }, LV_EVENT_VALUE_CHANGED, this);
+
+    // Auto-detect checkbox
+    lv_obj_t* auto_detect_row = lv_obj_create(controls_grid);
+    lv_obj_set_size(auto_detect_row, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(auto_detect_row, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(auto_detect_row, 0, 0);
+    lv_obj_set_style_pad_all(auto_detect_row, 0, 0);
+    lv_obj_set_layout(auto_detect_row, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(auto_detect_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(auto_detect_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    auto_detect_checkbox_ = lv_checkbox_create(auto_detect_row);
+    lv_checkbox_set_text(auto_detect_checkbox_, "Auto-detect active source");
+    lv_obj_set_style_text_color(auto_detect_checkbox_, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_text_font(auto_detect_checkbox_, FontA.small, 0);
+    lv_obj_add_event_cb(auto_detect_checkbox_, [](lv_event_t* e) {
+        auto* tab = static_cast<ClockTab*>(lv_event_get_user_data(e));
+        bool checked = lv_obj_has_state(static_cast<lv_obj_t*>(lv_event_get_target(e)), LV_STATE_CHECKED);
+        tab->onAutoDetectToggled(checked);
+    }, LV_EVENT_VALUE_CHANGED, this);
+
+    // Active source status
+    active_source_label_ = lv_label_create(controls_grid);
+    lv_label_set_text(active_source_label_, "Active: Internal");
+    lv_obj_set_style_text_color(active_source_label_, lv_color_hex(0x00FF88), 0);
+    lv_obj_set_style_text_font(active_source_label_, FontA.small, 0);
 
     // Add MIDI test button
     midi_test_btn_ = lv_btn_create(settings_container_);
@@ -363,6 +421,41 @@ void ClockTab::onTempoDownClicked() {
     clock_manager.setBPM(current_bpm - 1.0f);
 }
 
+void ClockTab::onSyncSourceChanged(int source_index) {
+    auto& clock_manager = MidiClockManager::getInstance();
+    
+    MidiClockManager::SyncSource source;
+    switch (source_index) {
+        case 0: source = MidiClockManager::SyncSource::INTERNAL; break;
+        case 1: source = MidiClockManager::SyncSource::USB_MIDI; break;
+        case 2: source = MidiClockManager::SyncSource::HARDWARE_MIDI; break;
+        case 3: source = MidiClockManager::SyncSource::SOFTWARE; break;
+        case 4: source = MidiClockManager::SyncSource::AUTO_DETECT; break;
+        default: source = MidiClockManager::SyncSource::INTERNAL; break;
+    }
+    
+    clock_manager.setSyncSource(source);
+    updateStatusDisplay();
+    
+    std::cout << "[Clock Tab] Sync source changed to: " << clock_manager.getSyncSourceName(source) << std::endl;
+}
+
+void ClockTab::onAutoDetectToggled(bool enabled) {
+    auto& clock_manager = MidiClockManager::getInstance();
+    clock_manager.setAutoDetectSource(enabled);
+    
+    // If auto-detect is enabled, enable the appropriate clock mode
+    if (enabled) {
+        auto settings = clock_manager.getClockSettings();
+        settings.mode = MidiClockManager::ClockMode::EXTERNAL;
+        settings.receive_clock = true;
+        clock_manager.setClockSettings(settings);
+    }
+    
+    updateStatusDisplay();
+    std::cout << "[Clock Tab] Auto-detect toggled: " << (enabled ? "ON" : "OFF") << std::endl;
+}
+
 void ClockTab::onSettingChanged(const std::string& key) {
     // Sync relevant MIDI settings changes to clock manager
     if (key.find("midi.") == 0) {
@@ -412,6 +505,20 @@ void ClockTab::updateStatusDisplay() {
         
         lv_label_set_text_fmt(sync_status_label_, "Sync: %s", status_text);
         lv_obj_set_style_text_color(sync_status_label_, lv_color_hex(status_color), 0);
+    }
+    
+    // Update active sync source display
+    if (active_source_label_) {
+        auto current_source = clock_manager.getSyncSource();
+        auto active_source = clock_manager.getActiveSyncSource();
+        const char* source_name = clock_manager.getSyncSourceName(active_source);
+        
+        // Color coding: green if active matches selected, yellow if auto-detected different source
+        uint32_t source_color = (current_source == active_source || current_source == MidiClockManager::SyncSource::AUTO_DETECT) 
+            ? 0x00FF88 : 0xFFAA00;
+            
+        lv_label_set_text_fmt(active_source_label_, "Active: %s", source_name);
+        lv_obj_set_style_text_color(active_source_label_, lv_color_hex(source_color), 0);
     }
 }
 

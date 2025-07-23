@@ -24,14 +24,24 @@ public:
         OFF          // No clock sync (renamed from DISABLED to avoid ESP32 macro conflict)
     };
 
+    enum class SyncSource {
+        INTERNAL,           // Internal software clock
+        USB_MIDI,          // USB MIDI input clock
+        HARDWARE_MIDI,     // Hardware MIDI input clock  
+        SOFTWARE,          // Software/DAW clock (virtual ports)
+        AUTO_DETECT        // Automatically detect active source
+    };
+
     struct ClockSettings {
         int ppqn = 24;              // Pulses Per Quarter Note (standard = 24)
         float bpm = 120.0f;         // Beats Per Minute
         ClockMode mode = ClockMode::INTERNAL;
+        SyncSource sync_source = SyncSource::INTERNAL;
         bool send_clock = true;     // Send MIDI clock messages
         bool send_transport = true; // Send start/stop/continue messages
         bool receive_clock = false; // Respond to incoming clock
         bool receive_transport = false; // Respond to transport messages
+        bool auto_detect_source = true; // Auto-switch to active clock source
     };
 
     using TransportChangedCallback = std::function<void(TransportState old_state, TransportState new_state)>;
@@ -64,6 +74,16 @@ public:
     void setClockMode(ClockMode mode);
     ClockMode getClockMode() const { return settings_.mode; }
 
+    // Sync source control
+    void setSyncSource(SyncSource source);
+    SyncSource getSyncSource() const { return settings_.sync_source; }
+    SyncSource getActiveSyncSource() const { return active_sync_source_; }
+    const char* getSyncSourceName(SyncSource source) const;
+    
+    // Auto-detection
+    void setAutoDetectSource(bool enable) { settings_.auto_detect_source = enable; }
+    bool isAutoDetectEnabled() const { return settings_.auto_detect_source; }
+
     // Update loop (call from main loop)
     void update();
 
@@ -73,10 +93,10 @@ public:
     void setBPMChangedCallback(BPMChangedCallback callback) { bpm_callback_ = callback; }
 
     // MIDI message handling (called by MidiHandler)
-    void handleMidiClockMessage();
-    void handleMidiStartMessage();
-    void handleMidiStopMessage();
-    void handleMidiContinueMessage();
+    void handleMidiClockMessage(SyncSource source = SyncSource::AUTO_DETECT);
+    void handleMidiStartMessage(SyncSource source = SyncSource::AUTO_DETECT);
+    void handleMidiStopMessage(SyncSource source = SyncSource::AUTO_DETECT);
+    void handleMidiContinueMessage(SyncSource source = SyncSource::AUTO_DETECT);
 
     // Status
     bool isRunning() const { return transport_state_ == TransportState::PLAYING; }
@@ -101,20 +121,35 @@ private:
     void notifyTransportChanged(TransportState old_state, TransportState new_state);
     void notifyClockTick();
     void notifyBPMChanged();
+    
+    // Sync source detection and management
+    void detectActiveSyncSource();
+    void updateSyncSourceActivity(SyncSource source);
+    bool isSyncSourceActive(SyncSource source) const;
+    void resetSyncSourceActivity();
 
     // State
     ClockSettings settings_;
     TransportState transport_state_ = TransportState::STOPPED;
+    SyncSource active_sync_source_ = SyncSource::INTERNAL;
     
     // Timing
     std::chrono::steady_clock::time_point last_tick_time_;
     int current_tick_ = 0;
     bool first_tick_ = true;
     
-    // External sync
+    // External sync tracking
     std::chrono::steady_clock::time_point last_external_clock_;
+    std::chrono::steady_clock::time_point last_usb_clock_;
+    std::chrono::steady_clock::time_point last_hardware_clock_;
+    std::chrono::steady_clock::time_point last_software_clock_;
     float detected_bpm_ = 120.0f;
     int external_tick_count_ = 0;
+    
+    // Source activity tracking
+    bool usb_midi_active_ = false;
+    bool hardware_midi_active_ = false;
+    bool software_midi_active_ = false;
 
     // Callbacks
     TransportChangedCallback transport_callback_;

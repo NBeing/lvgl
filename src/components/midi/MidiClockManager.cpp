@@ -2,6 +2,7 @@
 #include "UnifiedMidiManager.h"
 #include <iostream>
 #include <algorithm>
+#include <cmath>
 
 MidiClockManager& MidiClockManager::getInstance() {
     static MidiClockManager instance;
@@ -31,6 +32,117 @@ void MidiClockManager::play() {
     
     std::cout << "MidiClockManager: Transport PLAY (BPM: " << settings_.bpm << ")" << std::endl;
     notifyTransportChanged(old_state, transport_state_);
+}
+
+// Sync Source Methods
+void MidiClockManager::setSyncSource(SyncSource source) {
+    if (settings_.sync_source != source) {
+        settings_.sync_source = source;
+        std::cout << "MidiClockManager: Sync source changed to " << getSyncSourceName(source) << std::endl;
+        
+        // Update active source immediately if not auto-detecting
+        if (source != SyncSource::AUTO_DETECT) {
+            active_sync_source_ = source;
+        }
+        
+        // Reset sync source activity tracking
+        resetSyncSourceActivity();
+    }
+}
+
+const char* MidiClockManager::getSyncSourceName(SyncSource source) const {
+    switch (source) {
+        case SyncSource::INTERNAL: return "Internal";
+        case SyncSource::USB_MIDI: return "USB MIDI";
+        case SyncSource::HARDWARE_MIDI: return "Hardware MIDI";
+        case SyncSource::SOFTWARE: return "Software";
+        case SyncSource::AUTO_DETECT: return "Auto-Detect";
+        default: return "Unknown";
+    }
+}
+
+void MidiClockManager::detectActiveSyncSource() {
+    if (!settings_.auto_detect_source) return;
+    
+    auto now = std::chrono::steady_clock::now();
+    const auto timeout = std::chrono::milliseconds(500); // Consider inactive after 500ms
+    
+    // Check which sources have been active recently
+    usb_midi_active_ = (now - last_usb_clock_) < timeout;
+    hardware_midi_active_ = (now - last_hardware_clock_) < timeout;
+    software_midi_active_ = (now - last_software_clock_) < timeout;
+    
+    // Priority: Hardware MIDI > USB MIDI > Software
+    SyncSource new_active = active_sync_source_;
+    
+    if (hardware_midi_active_) {
+        new_active = SyncSource::HARDWARE_MIDI;
+    } else if (usb_midi_active_) {
+        new_active = SyncSource::USB_MIDI;
+    } else if (software_midi_active_) {
+        new_active = SyncSource::SOFTWARE;
+    } else {
+        new_active = SyncSource::INTERNAL; // Fallback to internal if no external clock
+    }
+    
+    if (new_active != active_sync_source_) {
+        active_sync_source_ = new_active;
+        std::cout << "MidiClockManager: Auto-detected sync source: " << getSyncSourceName(new_active) << std::endl;
+    }
+}
+
+void MidiClockManager::updateSyncSourceActivity(SyncSource source) {
+    auto now = std::chrono::steady_clock::now();
+    
+    switch (source) {
+        case SyncSource::USB_MIDI:
+            last_usb_clock_ = now;
+            break;
+        case SyncSource::HARDWARE_MIDI:
+            last_hardware_clock_ = now;
+            break;
+        case SyncSource::SOFTWARE:
+            last_software_clock_ = now;
+            break;
+        default:
+            break;
+    }
+    
+    // Update active source if auto-detecting
+    if (settings_.auto_detect_source) {
+        detectActiveSyncSource();
+    }
+}
+
+bool MidiClockManager::isSyncSourceActive(SyncSource source) const {
+    auto now = std::chrono::steady_clock::now();
+    const auto timeout = std::chrono::milliseconds(500);
+    
+    switch (source) {
+        case SyncSource::USB_MIDI:
+            return (now - last_usb_clock_) < timeout;
+        case SyncSource::HARDWARE_MIDI:
+            return (now - last_hardware_clock_) < timeout;
+        case SyncSource::SOFTWARE:
+            return (now - last_software_clock_) < timeout;
+        case SyncSource::INTERNAL:
+            return settings_.mode == ClockMode::INTERNAL;
+        default:
+            return false;
+    }
+}
+
+void MidiClockManager::resetSyncSourceActivity() {
+    auto now = std::chrono::steady_clock::now();
+    auto old_time = now - std::chrono::seconds(1); // Set to 1 second ago
+    
+    last_usb_clock_ = old_time;
+    last_hardware_clock_ = old_time;
+    last_software_clock_ = old_time;
+    
+    usb_midi_active_ = false;
+    hardware_midi_active_ = false;
+    software_midi_active_ = false;
 }
 
 void MidiClockManager::pause() {
@@ -150,8 +262,13 @@ double MidiClockManager::getTickIntervalMs() const {
 }
 
 // MIDI message handlers (called by MidiHandler)
-void MidiClockManager::handleMidiClockMessage() {
+void MidiClockManager::handleMidiClockMessage(SyncSource source) {
     if (!settings_.receive_clock || settings_.mode != ClockMode::EXTERNAL) return;
+    
+    // Update sync source activity
+    if (source != SyncSource::AUTO_DETECT) {
+        updateSyncSourceActivity(source);
+    }
     
     auto now = std::chrono::steady_clock::now();
     
@@ -180,26 +297,41 @@ void MidiClockManager::handleMidiClockMessage() {
     notifyClockTick();
 }
 
-void MidiClockManager::handleMidiStartMessage() {
+void MidiClockManager::handleMidiStartMessage(SyncSource source) {
     if (!settings_.receive_transport) return;
     
-    std::cout << "MidiClockManager: Received MIDI Start" << std::endl;
+    // Update sync source activity
+    if (source != SyncSource::AUTO_DETECT) {
+        updateSyncSourceActivity(source);
+    }
+    
+    std::cout << "MidiClockManager: Received MIDI Start from " << getSyncSourceName(source) << std::endl;
     current_tick_ = 0;
     external_tick_count_ = 0;
     play();
 }
 
-void MidiClockManager::handleMidiStopMessage() {
+void MidiClockManager::handleMidiStopMessage(SyncSource source) {
     if (!settings_.receive_transport) return;
     
-    std::cout << "MidiClockManager: Received MIDI Stop" << std::endl;
+    // Update sync source activity
+    if (source != SyncSource::AUTO_DETECT) {
+        updateSyncSourceActivity(source);
+    }
+    
+    std::cout << "MidiClockManager: Received MIDI Stop from " << getSyncSourceName(source) << std::endl;
     stop();
 }
 
-void MidiClockManager::handleMidiContinueMessage() {
+void MidiClockManager::handleMidiContinueMessage(SyncSource source) {
     if (!settings_.receive_transport) return;
     
-    std::cout << "MidiClockManager: Received MIDI Continue" << std::endl;
+    // Update sync source activity
+    if (source != SyncSource::AUTO_DETECT) {
+        updateSyncSourceActivity(source);
+    }
+    
+    std::cout << "MidiClockManager: Received MIDI Continue from " << getSyncSourceName(source) << std::endl;
     continue_playback();
 }
 

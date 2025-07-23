@@ -39,6 +39,8 @@ private:
     void onTempoDownClicked();
     void onPPQNChanged(int ppqn_index);
     void onClockModeChanged(int mode_index);
+    void onSyncSourceChanged(int source_index);
+    void onAutoDetectToggled(bool enabled);
     void onMidiTestClicked();
 
     // Settings sync
@@ -65,6 +67,8 @@ private:
     lv_obj_t* tempo_display_;
     lv_obj_t* ppqn_dropdown_;
     lv_obj_t* clock_mode_dropdown_;
+    lv_obj_t* sync_source_dropdown_;
+    lv_obj_t* auto_detect_checkbox_;
     lv_obj_t* midi_test_btn_;
 
     // Status displays
@@ -72,6 +76,7 @@ private:
     lv_obj_t* tick_rate_label_;
     lv_obj_t* beat_indicator_;
     lv_obj_t* sync_status_label_;
+    lv_obj_t* active_source_label_;
 
     // Visual beat indicator
     lv_obj_t* beat_led_;

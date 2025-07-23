@@ -21,6 +21,7 @@ public:
         is_active_ = active; 
         if (active) {
             needs_update_ = false;  // Reset flag when tab becomes active
+            inactive_display_created_ = false;  // Reset inactive display flag
         }
     }
     bool isActive() const { return is_active_; }
@@ -43,6 +44,7 @@ private:
     std::vector<std::string> display_lines_;
     std::vector<lv_obj_t*> line_containers_;  // Store line containers for cleanup
     bool needs_update_ = false;
+    bool inactive_display_created_ = false;   // Track if inactive display has been shown
     
     void updateDisplay();
     void createLogLine(const std::string& text, uint32_t text_color, bool is_alternate_bg);

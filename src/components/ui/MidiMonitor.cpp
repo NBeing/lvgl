@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <chrono>
 #include <cstring>
 
 namespace UI {
@@ -130,24 +131,49 @@ void MidiMonitor::update() {
                   << " - got " << message_count << " messages - total lines: " << display_lines_.size() << std::endl;
     }
     
-    // Update display when active
+    // When inactive, only update display ONCE when first becoming inactive
     if (!is_active_) {
-        if (scroll_container_ && update_counter % 100 == 0) {
-            // Update inactive display periodically
+        if (!inactive_display_created_ && scroll_container_) {
             updateDisplay();
+            inactive_display_created_ = true;
+            std::cout << "[MIDI Monitor] Created inactive display (one-time)" << std::endl;
         }
         return;
     }
     
-    // ALWAYS update display when we get new messages, regardless of needs_update_ flag
+    // Reset the inactive display flag when becoming active
+    if (inactive_display_created_) {
+        inactive_display_created_ = false;
+        std::cout << "[MIDI Monitor] Resetting inactive display flag - now active" << std::endl;
+    }
+
+    // THROTTLE display updates to prevent memory exhaustion!
+    // Only update display at most once every 30 frames (~500ms at 60fps)
+    static int last_display_update = 0;
+    bool should_update_display = false;
+    
     if (got_messages) {
-        std::cout << "[MIDI Monitor] *** UPDATING DISPLAY with " << display_lines_.size() << " lines (got " << message_count << " new messages)" << std::endl;
-        updateDisplay();
-        needs_update_ = true;
+        // Only update display if enough time has passed since last update
+        if ((update_counter - last_display_update) >= 30) {
+            should_update_display = true;
+            last_display_update = update_counter;
+            std::cout << "[MIDI Monitor] *** UPDATING DISPLAY with " << display_lines_.size() 
+                      << " lines (got " << message_count << " new messages) - throttled update" << std::endl;
+        } else {
+            std::cout << "[MIDI Monitor] Skipping display update (throttled) - " 
+                      << (30 - (update_counter - last_display_update)) << " frames remaining" << std::endl;
+        }
     }
     // Also update on first call when tab becomes active
     else if (!needs_update_) {
+        should_update_display = true;
+        last_display_update = update_counter;
         std::cout << "[MIDI Monitor] Initial display update (first time active)" << std::endl;
+        needs_update_ = false;
+    }
+    
+    // Actually update the display if needed
+    if (should_update_display) {
         updateDisplay();
         needs_update_ = true;
     }
@@ -155,30 +181,31 @@ void MidiMonitor::update() {
 
 void MidiMonitor::updateDisplay() {
     std::cout << "[MIDI Monitor] *** updateDisplay() called - scroll_container_: " << (scroll_container_ ? "valid" : "NULL") 
-              << " - active: " << is_active_ << std::endl;
+              << " - active: " << is_active_ << " - existing containers: " << line_containers_.size() << std::endl;
     
     if (!scroll_container_) {
         std::cout << "[MIDI Monitor] ERROR: No scroll container!" << std::endl;
         return;
     }
     
-    // Clear existing line containers
+    // ALWAYS clear existing containers first to prevent memory leaks
+    std::cout << "[MIDI Monitor] Clearing " << line_containers_.size() << " existing containers..." << std::endl;
     for (auto* container : line_containers_) {
-        lv_obj_del(container);
+        if (container) {
+            lv_obj_del(container);
+        }
     }
     line_containers_.clear();
     
     if (!is_active_) {
-        std::cout << "[MIDI Monitor] Setting inactive text" << std::endl;
-        createLogLine("MIDI Monitor (Inactive)", 0x657b83, false);
-        createLogLine("Switch to this tab to enable monitoring", 0x657b83, false);
+        // When inactive, add simple status messages
+        createLogLine("MIDI Monitor (Stopped - Messages Preserved)", 0x657b83, false);
+        createLogLine("Click 'Start Monitor' to resume monitoring", 0x657b83, false);
         return;
     }
-    
-    // Header
-    createLogLine("MIDI Monitor (Active)", 0x268bd2, false);
-    
-    if (display_lines_.empty()) {
+
+    // Add header for active monitor
+    createLogLine("MIDI Monitor (Active)", 0x268bd2, false);    if (display_lines_.empty()) {
         createLogLine("Waiting for MIDI activity...", 0x657b83, true);
     } else {
         std::cout << "[MIDI Monitor] Adding " << display_lines_.size() << " lines to display" << std::endl;
