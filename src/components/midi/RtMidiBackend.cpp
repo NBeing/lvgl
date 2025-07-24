@@ -104,16 +104,23 @@ void RtMidiBackend::sendMessage(uint8_t status) {
         return;
     }
     
-    // Handle single-byte messages (system real-time)
+    // Handle single-byte messages (system real-time) via MidiHandler
     switch (status) {
         case 0xF8: // MIDI Clock
+            midi_handler_->sendClockPulse();
+            break;
         case 0xFA: // Start
+            midi_handler_->sendStart();
+            break;
         case 0xFB: // Continue  
+            midi_handler_->sendContinue();
+            break;
         case 0xFC: // Stop
+            midi_handler_->sendStop();
+            break;
         case 0xFE: // Active Sensing
         case 0xFF: // System Reset
-            // For now, just log these - MidiHandler may not support them directly
-            std::cout << "[RtMidi] System message: 0x" << std::hex << (int)status << std::dec << std::endl;
+            midi_handler_->sendSystemMessage(status);
             break;
         default:
             std::cout << "[RtMidi] Unknown single-byte message: 0x" << std::hex << (int)status << std::dec << std::endl;

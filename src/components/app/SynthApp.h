@@ -13,6 +13,13 @@
 #include "components/ui/ClockTab.h"
 #include "components/ui/MidiMonitorTab.h"
 #include "hardware/MidiHandler.h"
+#include "BuildConfig.h"
+
+#if ENABLE_THREADED_MIDI
+#include "components/threading/ThreadingAbstraction.h"
+#include "components/midi/SimpleMidiClockProcessor.h"
+#include <atomic>
+#endif
 
 #if defined(ESP32_BUILD)
 #include "hardware/ESP32Display.h"
@@ -51,6 +58,13 @@ private:
     std::unique_ptr<ClockTab> clock_tab_;
     MidiMonitorTab* midi_monitor_tab_;  // Raw pointer since WindowManager owns it
     
+    // Threading infrastructure (gradual integration)
+    #if ENABLE_THREADED_MIDI
+    std::atomic<bool> threading_enabled_{false};
+    std::unique_ptr<MIDI::SimpleMidiClockProcessor> threaded_midi_clock_;
+    std::unique_ptr<Threading::ThreadHandle> midi_thread_;
+    #endif
+
 public:
     SynthApp();
     ~SynthApp();
@@ -69,6 +83,14 @@ public:
     // Access to shared components
     std::shared_ptr<MidiHandler> getMidiHandler() const;
     
+    // Threading infrastructure (gradual integration)
+    #if ENABLE_THREADED_MIDI
+    bool enableThreadedMidi();
+    void disableThreadedMidi();
+    bool isThreadedMidiEnabled() const;
+    MIDI::SimpleMidiClockProcessor* getThreadedMidiClock() const;
+    #endif
+
 private:
     // Initialization methods
     void initHardware();

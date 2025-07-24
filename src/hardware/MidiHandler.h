@@ -293,4 +293,100 @@ public:
         // Serial.printf("Control-Surface Aftertouch: Ch%d Note%d Press%d\n", channel, note, pressure);
     }
     #endif
+    
+    // System/Real-time MIDI Messages
+    void sendClockPulse() {
+        if (!initialized_) return;
+        
+        #if defined(ESP32_BUILD)
+            midi_interface_.sendRealTime(0xF8);
+        #else
+            if (!midi_out_) return;
+            
+            try {
+                std::vector<unsigned char> message;
+                message.push_back(0xF8);  // MIDI Clock
+                midi_out_->sendMessage(&message);
+                std::cout << "Desktop MIDI Clock sent" << std::endl;
+            } catch (RtMidiError& error) {
+                std::cerr << "MIDI clock send error: " << error.getMessage() << std::endl;
+            }
+        #endif
+    }
+    
+    void sendStart() {
+        if (!initialized_) return;
+        
+        #if defined(ESP32_BUILD)
+            midi_interface_.sendRealTime(0xFA);
+        #else
+            if (!midi_out_) return;
+            
+            try {
+                std::vector<unsigned char> message;
+                message.push_back(0xFA);  // MIDI Start
+                midi_out_->sendMessage(&message);
+                std::cout << "Desktop MIDI Start sent" << std::endl;
+            } catch (RtMidiError& error) {
+                std::cerr << "MIDI start send error: " << error.getMessage() << std::endl;
+            }
+        #endif
+    }
+    
+    void sendStop() {
+        if (!initialized_) return;
+        
+        #if defined(ESP32_BUILD)
+            midi_interface_.sendRealTime(0xFC);
+        #else
+            if (!midi_out_) return;
+            
+            try {
+                std::vector<unsigned char> message;
+                message.push_back(0xFC);  // MIDI Stop
+                midi_out_->sendMessage(&message);
+                std::cout << "Desktop MIDI Stop sent" << std::endl;
+            } catch (RtMidiError& error) {
+                std::cerr << "MIDI stop send error: " << error.getMessage() << std::endl;
+            }
+        #endif
+    }
+    
+    void sendContinue() {
+        if (!initialized_) return;
+        
+        #if defined(ESP32_BUILD)
+            midi_interface_.sendRealTime(0xFB);
+        #else
+            if (!midi_out_) return;
+            
+            try {
+                std::vector<unsigned char> message;
+                message.push_back(0xFB);  // MIDI Continue
+                midi_out_->sendMessage(&message);
+                std::cout << "Desktop MIDI Continue sent" << std::endl;
+            } catch (RtMidiError& error) {
+                std::cerr << "MIDI continue send error: " << error.getMessage() << std::endl;
+            }
+        #endif
+    }
+    
+    void sendSystemMessage(uint8_t status) {
+        if (!initialized_) return;
+        
+        #if defined(ESP32_BUILD)
+            midi_interface_.sendRealTime(status);
+        #else
+            if (!midi_out_) return;
+            
+            try {
+                std::vector<unsigned char> message;
+                message.push_back(status);
+                midi_out_->sendMessage(&message);
+                std::cout << "Desktop MIDI System Message: 0x" << std::hex << (int)status << std::dec << " sent" << std::endl;
+            } catch (RtMidiError& error) {
+                std::cerr << "MIDI system message send error: " << error.getMessage() << std::endl;
+            }
+        #endif
+    }
 };

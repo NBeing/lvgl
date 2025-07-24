@@ -98,6 +98,15 @@
     "terminal.integrated.defaultProfile.windows": "Command Prompt",
     "terminal.integrated.env.windows": {
         "PATH": "${env:PATH};${workspaceFolder}\\scripts"
-    }
+    },
+    "terminal.integrated.env.linux": {
+        "PATH": "/home/nbee/.platformio/penv/bin:${env:PATH}"
+    },
+    
+    // Task settings for PlatformIO
+    "terminal.integrated.shellArgs.linux": ["-l"],
+    "platformio-ide.customPATH": [
+        "/home/nbee/.platformio/penv/bin"
+    ]
 }
 

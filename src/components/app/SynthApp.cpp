@@ -12,9 +12,15 @@
 #include "components/midi/UnifiedMidiManager.h"
 #include "FontConfig.h"
 #include "Constants.h"
+#include "BuildConfig.h"
 #include <iostream>
 #if !defined(ESP32_BUILD)
 #include <unistd.h>  // For usleep on desktop
+#endif
+
+#if ENABLE_THREADED_MIDI
+#include "components/threading/ThreadingAbstraction.h"
+#include "components/midi/SimpleMidiClockProcessor.h"
 #endif
 
 #if defined(ESP32_BUILD)
@@ -89,6 +95,18 @@ void SynthApp::setup() {
     
     initialized_ = true;
     std::cout << "Synth GUI initialized successfully!" << std::endl;
+    
+    // Optional: Enable threaded MIDI if flag is set
+    #if ENABLE_THREADED_MIDI
+        std::cout << "[Threading] ENABLE_THREADED_MIDI flag is active - enabling threaded MIDI..." << std::endl;
+        if (enableThreadedMidi()) {
+            std::cout << "Threaded MIDI enabled successfully!" << std::endl;
+        } else {
+            std::cout << "Warning: Failed to enable threaded MIDI, using traditional approach" << std::endl;
+        }
+    #else
+        std::cout << "[Threading] ENABLE_THREADED_MIDI flag is disabled - using traditional MIDI" << std::endl;
+    #endif
 }
 
 void SynthApp::initHardware() {
@@ -229,6 +247,29 @@ void SynthApp::createTabs() {
 void SynthApp::loop() {
     if (!initialized_) return;
     
+#if ENABLE_THREADED_MIDI
+    // Threaded mode: Only handle UI, MIDI runs in separate thread
+    lv_timer_handler();
+    
+    #if defined(ESP32_BUILD)
+        delay(16);  // ~60Hz UI updates
+    #else
+        usleep(16000);  // ~60Hz UI updates
+    #endif
+    
+    // Update window manager
+    if (window_manager_) {
+        window_manager_->update();
+    }
+    
+    // Process queued MIDI events for UI updates
+    if (threaded_midi_clock_ && threading_enabled_.load()) {
+        // Clock updates are handled in background thread
+        // UI just needs to refresh displays
+    }
+    
+#else
+    // Original single-threaded mode
     #if defined(ESP32_BUILD)
         lv_timer_handler();
         delay(5);
@@ -247,7 +288,8 @@ void SynthApp::loop() {
     
     // Update unified MIDI manager
     UnifiedMidiManager::getInstance().update();
-    
+#endif
+
     // Update MIDI monitor safely in main loop context (all platforms)
     if (midi_monitor_tab_) {
         static int main_loop_counter = 0;
@@ -324,3 +366,56 @@ bool SynthApp::isInitialized() const {
 std::shared_ptr<MidiHandler> SynthApp::getMidiHandler() const {
     return midi_handler_;
 }
+
+// Threading infrastructure (gradual integration)
+#if ENABLE_THREADED_MIDI
+bool SynthApp::enableThreadedMidi() {
+    if (threading_enabled_.load()) return true;
+    
+    std::cout << "[Threading] Enabling threaded MIDI processing..." << std::endl;
+    
+    // Create threaded MIDI clock processor
+    threaded_midi_clock_ = std::make_unique<MIDI::SimpleMidiClockProcessor>();
+    if (!threaded_midi_clock_->start()) {
+        std::cout << "[Threading] Failed to start MIDI clock processor!" << std::endl;
+        return false;
+    }
+    
+    // TODO: Create MIDI input processing thread
+    // midi_thread_ = Threading::TaskManager::createTask(...);
+    
+    threading_enabled_.store(true);
+    std::cout << "[Threading] Threaded MIDI enabled successfully!" << std::endl;
+    return true;
+}
+
+void SynthApp::disableThreadedMidi() {
+    if (!threading_enabled_.load()) return;
+    
+    std::cout << "[Threading] Disabling threaded MIDI processing..." << std::endl;
+    
+    threading_enabled_.store(false);
+    
+    // Stop MIDI thread
+    if (midi_thread_) {
+        midi_thread_->stop();
+        midi_thread_.reset();
+    }
+    
+    // Stop MIDI clock processor
+    if (threaded_midi_clock_) {
+        threaded_midi_clock_->stop();
+        threaded_midi_clock_.reset();
+    }
+    
+    std::cout << "[Threading] Threaded MIDI disabled" << std::endl;
+}
+
+bool SynthApp::isThreadedMidiEnabled() const {
+    return threading_enabled_.load();
+}
+
+MIDI::SimpleMidiClockProcessor* SynthApp::getThreadedMidiClock() const {
+    return threaded_midi_clock_.get();
+}
+#endif

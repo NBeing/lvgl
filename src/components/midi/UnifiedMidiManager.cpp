@@ -265,9 +265,17 @@ void UnifiedMidiManager::sendPitchBend(uint8_t channel, uint16_t value) {
 }
 
 void UnifiedMidiManager::sendClockPulse() {
-#if !defined(ESP32_BUILD)
-    if (midi_monitor_) midi_monitor_->logOutput("ClockPulse");
-#endif
+    // Log to global queue using enhanced format (like other MIDI messages)
+    char hex_data[32];
+    char friendly_name[48];
+    UI::MidiLogQueue::parseMidiMessage(0xF8, 0, 0, hex_data, friendly_name);
+    UI::MidiLogQueue::getInstance().logMidiMessage(
+        UI::MidiLogQueue::LogEntry::MIDI_OUTPUT,
+        UI::MidiLogQueue::LogEntry::HARDWARE,
+        hex_data,
+        friendly_name
+    );
+    
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xF8); // MIDI Clock
@@ -276,9 +284,17 @@ void UnifiedMidiManager::sendClockPulse() {
 }
 
 void UnifiedMidiManager::sendStart() {
-#if !defined(ESP32_BUILD)
-    if (midi_monitor_) midi_monitor_->logOutput("Start");
-#endif
+    // Log to global queue using enhanced format
+    char hex_data[32];
+    char friendly_name[48];
+    UI::MidiLogQueue::parseMidiMessage(0xFA, 0, 0, hex_data, friendly_name);
+    UI::MidiLogQueue::getInstance().logMidiMessage(
+        UI::MidiLogQueue::LogEntry::MIDI_OUTPUT,
+        UI::MidiLogQueue::LogEntry::HARDWARE,
+        hex_data,
+        friendly_name
+    );
+    
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xFA); // MIDI Start
@@ -287,9 +303,17 @@ void UnifiedMidiManager::sendStart() {
 }
 
 void UnifiedMidiManager::sendStop() {
-#if !defined(ESP32_BUILD)
-    if (midi_monitor_) midi_monitor_->logOutput("Stop");
-#endif
+    // Log to global queue using enhanced format
+    char hex_data[32];
+    char friendly_name[48];
+    UI::MidiLogQueue::parseMidiMessage(0xFC, 0, 0, hex_data, friendly_name);
+    UI::MidiLogQueue::getInstance().logMidiMessage(
+        UI::MidiLogQueue::LogEntry::MIDI_OUTPUT,
+        UI::MidiLogQueue::LogEntry::HARDWARE,
+        hex_data,
+        friendly_name
+    );
+    
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xFC); // MIDI Stop
@@ -298,9 +322,17 @@ void UnifiedMidiManager::sendStop() {
 }
 
 void UnifiedMidiManager::sendContinue() {
-#if !defined(ESP32_BUILD)
-    if (midi_monitor_) midi_monitor_->logOutput("Continue");
-#endif
+    // Log to global queue using enhanced format
+    char hex_data[32];
+    char friendly_name[48];
+    UI::MidiLogQueue::parseMidiMessage(0xFB, 0, 0, hex_data, friendly_name);
+    UI::MidiLogQueue::getInstance().logMidiMessage(
+        UI::MidiLogQueue::LogEntry::MIDI_OUTPUT,
+        UI::MidiLogQueue::LogEntry::HARDWARE,
+        hex_data,
+        friendly_name
+    );
+    
     for (auto& backend : backends_) {
         if (backend->getStatus() == ConnectionStatus::CONNECTED && backend->supportsOutput()) {
             backend->sendMessage(0xFB); // MIDI Continue
