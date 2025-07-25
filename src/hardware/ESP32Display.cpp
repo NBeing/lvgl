@@ -44,15 +44,27 @@ bool ESP32Display::initialize() {
 }
 
 void ESP32Display::setupDisplay() {
-    // Create display buffer
+    // Create display buffer with PSRAM optimization
     size_t buffer_pixels = tft_.width() * 40;
+    
+    // Try PSRAM first, fallback to DMA-capable memory
     display_buffer_ = (lv_color_t*)heap_caps_malloc(
-        buffer_pixels * sizeof(lv_color_t), MALLOC_CAP_DMA);
+        buffer_pixels * sizeof(lv_color_t), 
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    
+    if (!display_buffer_) {
+        std::cout << "PSRAM allocation failed, trying DMA memory..." << std::endl;
+        display_buffer_ = (lv_color_t*)heap_caps_malloc(
+            buffer_pixels * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    }
     
     if (!display_buffer_) {
         std::cerr << "Failed to allocate display buffer!" << std::endl;
         return;
     }
+    
+    std::cout << "Display buffer allocated: " << (buffer_pixels * sizeof(lv_color_t)) 
+              << " bytes in " << (heap_caps_get_allocated_size(display_buffer_) ? "PSRAM" : "SRAM") << std::endl;
     
     // Create LVGL display
     display_ = lv_display_create(tft_.width(), tft_.height());

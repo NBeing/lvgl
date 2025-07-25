@@ -3,6 +3,8 @@
 #include <functional>
 #include <chrono>
 #include <memory>
+#include <vector>
+#include "RTClockObserver.h"
 
 /**
  * @brief MIDI Clock and Transport Manager
@@ -92,6 +94,16 @@ public:
     void setClockTickCallback(ClockTickCallback callback) { clock_callback_ = callback; }
     void setBPMChangedCallback(BPMChangedCallback callback) { bpm_callback_ = callback; }
 
+    // RT Observer management (for immediate MIDI responses)
+    void addRTObserver(MIDI::RTClockObserver* observer);
+    void removeRTObserver(MIDI::RTClockObserver* observer);
+    
+    // Separate RT notifications (called from RT thread)
+    void notifyRTObservers(int tick);
+    void notifyRTStart();
+    void notifyRTStop();
+    void notifyRTContinue();
+
     // MIDI message handling (called by MidiHandler)
     void handleMidiClockMessage(SyncSource source = SyncSource::AUTO_DETECT);
     void handleMidiStartMessage(SyncSource source = SyncSource::AUTO_DETECT);
@@ -155,4 +167,7 @@ private:
     TransportChangedCallback transport_callback_;
     ClockTickCallback clock_callback_;
     BPMChangedCallback bpm_callback_;
+    
+    // RT Observers (for immediate MIDI responses)
+    std::vector<MIDI::RTClockObserver*> rt_observers_;
 };

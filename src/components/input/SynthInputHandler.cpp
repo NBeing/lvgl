@@ -64,7 +64,7 @@ void SynthInputHandler::onAction(const std::string& action, const Input::Event& 
     }
 }
 
-void SynthInputHandler::handleTransportAction(const std::string& action, const Input::Event& event) {
+void SynthInputHandler::handleTransportAction(const std::string& action, const Input::Event& /*event*/) {
     if (!clock_manager_) return;
     
     if (action == "transport_play_pause") {
@@ -94,7 +94,7 @@ void SynthInputHandler::handleBPMAction(const std::string& action, const Input::
     }
 }
 
-void SynthInputHandler::handleNavigationAction(const std::string& action, const Input::Event& event) {
+void SynthInputHandler::handleNavigationAction(const std::string& action, const Input::Event& /*event*/) {
     // Tab navigation would be handled by the UI system
     // For now, just log the action
     std::cout << "SynthInputHandler: Navigation action '" << action << "' - UI integration needed" << std::endl;
@@ -108,7 +108,7 @@ void SynthInputHandler::handleNavigationAction(const std::string& action, const 
     // }
 }
 
-void SynthInputHandler::handleParameterAction(const std::string& action, const Input::Event& event) {
+void SynthInputHandler::handleParameterAction(const std::string& action, const Input::Event& /*event*/) {
     // Parameter adjustment would be handled by the active control
     // For now, just log the action
     std::cout << "SynthInputHandler: Parameter action '" << action << "' - parameter system integration needed" << std::endl;
@@ -120,7 +120,7 @@ void SynthInputHandler::handleParameterAction(const std::string& action, const I
     // }
 }
 
-void SynthInputHandler::handleUtilityAction(const std::string& action, const Input::Event& event) {
+void SynthInputHandler::handleUtilityAction(const std::string& action, const Input::Event& /*event*/) {
     if (action == "help") {
         std::cout << "SynthInputHandler: Help requested - showing help dialog" << std::endl;
         // TODO: Show help dialog

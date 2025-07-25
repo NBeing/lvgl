@@ -12,9 +12,14 @@
     #define LV_COLOR_DEPTH 32   // Desktop - try 32-bit color
     // #define LV_COLOR_16_SWAP 0  // Not needed for 32-bit
 #endif
-// Memory management
+// Memory management - OPTIMIZED for ESP32-S3 with PSRAM
 #define LV_MEM_CUSTOM           1
-#define LV_MEM_SIZE             (128U * 1024U)
+#ifdef ESP32_BUILD
+    // Use larger memory pool with PSRAM available
+    #define LV_MEM_SIZE         (128U * 1024U)  // 128KB - increased back with PSRAM
+#else
+    #define LV_MEM_SIZE         (64U * 1024U)   // 64KB for desktop
+#endif
 
 // Performance optimizations
 #define LV_USE_PERF_MONITOR     0

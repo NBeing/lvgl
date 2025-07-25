@@ -4,6 +4,10 @@
 #include "components/midi/MidiClockManager.h"
 #include "components/midi/ThreadedMidiClockManager.h"
 #include "components/midi/MetronomeObserver.h"
+#include "components/midi/StepSequencer.h"
+#include "components/midi/SequencerMidiOutput.h"
+#include "components/midi/TimestampedMidiOutput.h"
+#include "components/midi/MidiTimingThread.h"
 #include "components/midi/MidiEvents.h"
 #include "components/ui/WindowManager.h"
 #include "components/ui/SimpleClockTab.h"
@@ -18,6 +22,9 @@
 #include "components/ui/MidiMonitorTab.h"
 #include "components/midi/UnifiedMidiManager.h"
 #include "hardware/MidiHandler.h"
+#include "components/parameter/ParameterManager.h"
+#include "components/parameter/MidiParameterBridge.h"
+#include "components/parameter/ParameterRegistry.h"
 #include "Constants.h"
 #include <memory>
 #include <atomic>
@@ -52,6 +59,12 @@ private:
     
     // Threaded MIDI observers (demonstration)
     std::unique_ptr<MIDI::MetronomeObserver> metronome_observer_;
+    std::unique_ptr<MIDI::StepSequencer> step_sequencer_;
+    std::unique_ptr<MIDI::SequencerMidiOutput> sequencer_midi_output_;
+    std::shared_ptr<MIDI::TimestampedMidiOutput> timestamped_midi_output_;
+    
+    // High-precision timing components
+    std::shared_ptr<MIDI::MidiTimingThread> midi_timing_thread_;
     
     // UI Tabs (from SynthApp)
     std::unique_ptr<MainControlTab> main_tab_;
@@ -116,6 +129,34 @@ public:
         MIDI::ThreadedMidiClockManager::getInstance().addClockObserver(metronome_observer_.get());
         std::cout << "[ThreadedSynthApp] Metronome observer registered for clock events" << std::endl;
         
+        // Create and register step sequencer
+        step_sequencer_ = std::make_unique<MIDI::StepSequencer>();
+        MIDI::ThreadedMidiClockManager::getInstance().addClockObserver(step_sequencer_.get());
+        std::cout << "[ThreadedSynthApp] Step sequencer registered for clock events" << std::endl;
+        
+        // Create high-precision timing components
+        midi_timing_thread_ = std::make_shared<MIDI::MidiTimingThread>();
+        
+        // Create timestamped MIDI output for precise timing
+        timestamped_midi_output_ = std::make_shared<MIDI::TimestampedMidiOutput>(midi_handler_);
+        
+        // Connect timestamped output to timing thread
+        midi_timing_thread_->setTimestampedOutput(timestamped_midi_output_);
+        
+        // Start the high-precision timing thread
+        if (midi_timing_thread_->start()) {
+            std::cout << "[ThreadedSynthApp] ⚡ High-precision MIDI timing thread started (10kHz)" << std::endl;
+        } else {
+            std::cerr << "[ThreadedSynthApp] ❌ Failed to start MIDI timing thread!" << std::endl;
+        }
+        
+        // Connect sequencer to timestamped output
+        step_sequencer_->addSequencerObserver(timestamped_midi_output_.get());
+        std::cout << "[ThreadedSynthApp] Sequencer connected to high-precision timing system" << std::endl;
+        
+        // Program a simple demo pattern
+        setupDemoPattern();
+        
         // The regular MidiClockManager is still used for non-RT features
         std::cout << "[ThreadedSynthApp] Using ThreadedMidiClockManager for RT clock generation" << std::endl;
         
@@ -123,49 +164,145 @@ public:
         // The threading advantage comes from MIDI background processing
         
         initialized_.store(true);
+        
         std::cout << "=== Threaded Synth App Initialized ===" << std::endl;
         return true;
     }
     
     /**
+     * @brief Setup a demo sequencer pattern
+     */
+    void setupDemoPattern() {
+        if (!step_sequencer_) return;
+        
+        std::cout << "[ThreadedSynthApp] Setting up demo sequencer pattern..." << std::endl;
+        
+        // Track 0: Kick drum pattern (MIDI note 36 = C2)
+        step_sequencer_->setStep(0, 0, MIDI::StepSequencer::Step(36, 120, true));  // Downbeat accent
+        step_sequencer_->setStep(0, 4, MIDI::StepSequencer::Step(36, 100));        // Beat 2
+        step_sequencer_->setStep(0, 8, MIDI::StepSequencer::Step(36, 110));        // Beat 3
+        step_sequencer_->setStep(0, 12, MIDI::StepSequencer::Step(36, 100));       // Beat 4
+        
+        // Track 1: Snare drum pattern (MIDI note 38 = D2)
+        step_sequencer_->setStep(1, 4, MIDI::StepSequencer::Step(38, 115));        // Beat 2
+        step_sequencer_->setStep(1, 12, MIDI::StepSequencer::Step(38, 115));       // Beat 4
+        
+        // Track 2: Hi-hat pattern (MIDI note 42 = F#2)
+        for (int i = 0; i < 16; i += 2) {
+            step_sequencer_->setStep(2, i, MIDI::StepSequencer::Step(42, 80));     // 8th notes
+        }
+        
+        // Track 3: Bass line (MIDI notes C3, E3, G3)
+        step_sequencer_->setStep(3, 0, MIDI::StepSequencer::Step(48, 100));        // C3
+        step_sequencer_->setStep(3, 6, MIDI::StepSequencer::Step(52, 90));         // E3
+        step_sequencer_->setStep(3, 8, MIDI::StepSequencer::Step(48, 100));        // C3
+        step_sequencer_->setStep(3, 14, MIDI::StepSequencer::Step(55, 90));        // G3
+        
+        // Set up track channels and properties
+        step_sequencer_->getTrack(0).channel = 10; // Drum channel
+        step_sequencer_->getTrack(1).channel = 10; // Drum channel
+        step_sequencer_->getTrack(2).channel = 10; // Drum channel
+        step_sequencer_->getTrack(3).channel = 1;  // Bass channel
+        
+        std::cout << "[ThreadedSynthApp] Demo pattern loaded - 4 tracks ready!" << std::endl;
+    }
+    
+    /**
+     * @brief Print detailed performance statistics
+     */
+    void printDetailedPerformanceStats(std::chrono::microseconds midi_duration,
+                                      std::chrono::microseconds ui_duration,
+                                      std::chrono::microseconds total_duration) {
+        std::cout << "\n=== ThreadedSynthApp Detailed Performance Report ===" << std::endl;
+        std::cout << "Loop Timing:" << std::endl;
+        std::cout << "  MIDI Scheduling: " << midi_duration.count() << "μs" << std::endl;
+        std::cout << "  UI Processing: " << ui_duration.count() << "μs" << std::endl;
+        std::cout << "  Total Loop: " << total_duration.count() << "μs" << std::endl;
+        
+        if (midi_timing_thread_) {
+            const auto& timing_stats = midi_timing_thread_->getStats();
+            std::cout << "High-Precision Timing Thread:" << std::endl;
+            std::cout << "  Average Sleep Accuracy: " << timing_stats.average_sleep_accuracy_us << "μs" << std::endl;
+            std::cout << "  Max Sleep Error: " << timing_stats.max_sleep_error_us << "μs" << std::endl;
+            std::cout << "  Processed Cycles: " << timing_stats.processed_cycles << std::endl;
+            std::cout << "  Missed Deadlines: " << timing_stats.missed_deadlines << std::endl;
+        }
+        
+        if (timestamped_midi_output_) {
+            std::cout << "Timestamped MIDI Output:" << std::endl;
+            std::cout << "  Scheduled Events: " << timestamped_midi_output_->getScheduledEventCount() << std::endl;
+            std::cout << "  Average Latency: " << timestamped_midi_output_->getAverageLatency() << "μs" << std::endl;
+            std::cout << "  Max Latency: " << timestamped_midi_output_->getMaxLatency() << "μs" << std::endl;
+        }
+        
+        auto& clock_mgr = MIDI::ThreadedMidiClockManager::getInstance();
+        std::cout << "MIDI Clock:" << std::endl;
+        std::cout << "  Clock Running: " << (clock_mgr.isClockRunning() ? "YES" : "NO") << std::endl;
+        std::cout << "  Current BPM: " << clock_mgr.getBPM() << std::endl;
+        std::cout << "  Current Tick: " << clock_mgr.getCurrentTick() << std::endl;
+        std::cout << "======================================================\n" << std::endl;
+    }    /**
      * @brief Main loop - similar to SynthApp but with background MIDI processing
      */
     void loop() {
         if (!initialized_.load()) return;
         
-        // Handle LVGL updates (same as SynthApp)
-        lv_timer_handler();
+        // ⚡ SOLUTION: Use dedicated timing thread approach
+        // The MidiTimingThread runs independently at 10kHz
+        // UI can take 50ms without affecting MIDI timing!
+        
+        auto loop_start = std::chrono::steady_clock::now();
+        
+        // PHASE 1: Schedule MIDI events (fast, non-blocking)
+        auto midi_start = std::chrono::steady_clock::now();
         
         // Process threaded clock events (RT thread -> UI thread)
         MIDI::ThreadedMidiClockManager::getInstance().processEvents();
         
-        // Update MidiClockManager (handles non-RT features)
-        MidiClockManager::getInstance().update();
-        
-        // Update UnifiedMidiManager (processes MIDI input from all backends)
-        UnifiedMidiManager::getInstance().update();
-        
-        // Update window manager
-        if (window_manager_) {
-            window_manager_->update();
+        // Process sequencer events (sequencer -> timestamped scheduler)
+        if (step_sequencer_) {
+            step_sequencer_->processSequencerEvents();
+            // Events are now scheduled with precise timestamps
+            // The MidiTimingThread will send them at exactly the right time
         }
         
-        // Update MIDI monitor safely in main loop context (like SynthApp)
-        if (midi_monitor_tab_ptr_) {
-            midi_monitor_tab_ptr_->getMonitor().update();
+        auto midi_end = std::chrono::steady_clock::now();
+        auto midi_duration = std::chrono::duration_cast<std::chrono::microseconds>(midi_end - midi_start);
+        
+        // PHASE 2: UI Processing (can take 50ms+ without problems!)
+        auto ui_start = std::chrono::steady_clock::now();
+        
+        // Process UI this frame
+        {
+            // Handle LVGL updates - can take up to 50ms
+            lv_timer_handler();
+            
+            // Update other components
+            MidiClockManager::getInstance().update();
+            UnifiedMidiManager::getInstance().update();
+            
+            if (window_manager_) {
+                window_manager_->update();
+            }
+            
+            if (midi_monitor_tab_ptr_) {
+                midi_monitor_tab_ptr_->getMonitor().update();
+            }
         }
         
-        // Sleep for smooth 60Hz updates (like SynthApp)
-        Threading::TaskManager::sleep(16);  // ~60Hz updates
+        auto ui_end = std::chrono::steady_clock::now();
+        auto ui_duration = std::chrono::duration_cast<std::chrono::microseconds>(ui_end - ui_start);
         
-        // Optional: Print status less frequently
-        static int loop_count = 0;
-        if (++loop_count % 3000 == 0) {  // Every ~50 seconds
-            auto& clock_mgr = MidiClockManager::getInstance();
-            std::cout << "[ThreadedSynthApp] Running - Clock: " 
-                      << (clock_mgr.isRunning() ? "ON" : "OFF")
-                      << ", BPM: " << clock_mgr.getBPM() << std::endl;
+        // PHASE 3: Performance monitoring
+        auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(ui_end - loop_start);
+        
+        static int loop_counter = 0;
+        if (++loop_counter % 6000 == 0) {
+            printDetailedPerformanceStats(midi_duration, ui_duration, total_duration);
         }
+        
+        // Sleep for base loop rate (timing thread handles MIDI precision)
+        Threading::TaskManager::sleep(8);  // ~120Hz base rate
     }
     
     /**
@@ -179,6 +316,16 @@ public:
         initialized_.store(false);
         
         // Remove and cleanup observers
+        if (sequencer_midi_output_ && step_sequencer_) {
+            step_sequencer_->removeSequencerObserver(sequencer_midi_output_.get());
+            sequencer_midi_output_.reset();
+        }
+        
+        if (step_sequencer_) {
+            MIDI::ThreadedMidiClockManager::getInstance().removeClockObserver(step_sequencer_.get());
+            step_sequencer_.reset();
+        }
+        
         if (metronome_observer_) {
             MIDI::ThreadedMidiClockManager::getInstance().removeClockObserver(metronome_observer_.get());
             metronome_observer_.reset();
@@ -208,6 +355,21 @@ public:
     }
     
 private:
+    void initializeParameterSystem() {
+        // Initialize parameter registry with default parameters
+        Parameters::initializeDefaultParameters();
+        
+        // Initialize parameter manager
+        auto& param_manager = Parameters::ParameterManager::getInstance();
+        param_manager.initialize();
+        
+        // Initialize MIDI parameter bridge
+        auto& midi_bridge = Parameters::MidiParameterBridge::getInstance();
+        midi_bridge.initialize();
+        
+        std::cout << "[ThreadedSynthApp] Parameter system components initialized" << std::endl;
+    }
+    
     bool initializeLVGL() {
         #ifdef ESP32_BUILD
             // ESP32 LVGL initialization (same as SynthApp)
@@ -234,8 +396,11 @@ private:
             
             // Input setup
             auto mouse = lv_sdl_mouse_create();
+            (void)mouse; // Suppress unused warning
             auto mousewheel = lv_sdl_mousewheel_create();
+            (void)mousewheel; // Suppress unused warning
             auto keyboard = lv_sdl_keyboard_create();
+            (void)keyboard; // Suppress unused warning
             
             std::cout << "[Desktop] LVGL and SDL initialized (" 
                       << SynthConstants::ESP32_SCREEN_WIDTH << "x" 
@@ -288,6 +453,14 @@ private:
         // Set up UnifiedMidiManager
         UnifiedMidiManager::setSharedMidiHandler(midi_handler_);
         UnifiedMidiManager::getInstance().initialize();
+        
+        // Register MidiHandler as RT observer for immediate MIDI clock sending
+        MidiClockManager::getInstance().addRTObserver(midi_handler_.get());
+        std::cout << "[ThreadedSynthApp] MidiHandler registered as RT clock observer" << std::endl;
+        
+        // Initialize unified parameter system
+        initializeParameterSystem();
+        std::cout << "[ThreadedSynthApp] ⚡ Unified parameter system initialized" << std::endl;
         
         // Create window manager with constrained container (like SynthApp)
         createWindowManager();

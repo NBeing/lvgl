@@ -380,3 +380,47 @@ void MidiClockManager::notifyBPMChanged() {
         bpm_callback_(settings_.bpm);
     }
 }
+
+// RT Observer management
+void MidiClockManager::addRTObserver(MIDI::RTClockObserver* observer) {
+    if (observer && std::find(rt_observers_.begin(), rt_observers_.end(), observer) == rt_observers_.end()) {
+        rt_observers_.push_back(observer);
+        std::cout << "[MidiClockManager] Added RT observer: " << observer << std::endl;
+    }
+}
+
+void MidiClockManager::removeRTObserver(MIDI::RTClockObserver* observer) {
+    auto it = std::find(rt_observers_.begin(), rt_observers_.end(), observer);
+    if (it != rt_observers_.end()) {
+        rt_observers_.erase(it);
+        std::cout << "[MidiClockManager] Removed RT observer: " << observer << std::endl;
+    }
+}
+
+void MidiClockManager::notifyRTObservers(int tick) {
+    // Called from RT thread - notify all RT observers immediately
+    for (auto* observer : rt_observers_) {
+        observer->onRTClockTick(tick);
+    }
+}
+
+void MidiClockManager::notifyRTStart() {
+    // Called from RT thread - notify all RT observers immediately
+    for (auto* observer : rt_observers_) {
+        observer->onRTClockStart();
+    }
+}
+
+void MidiClockManager::notifyRTStop() {
+    // Called from RT thread - notify all RT observers immediately
+    for (auto* observer : rt_observers_) {
+        observer->onRTClockStop();
+    }
+}
+
+void MidiClockManager::notifyRTContinue() {
+    // Called from RT thread - notify all RT observers immediately
+    for (auto* observer : rt_observers_) {
+        observer->onRTClockContinue();
+    }
+}

@@ -13,11 +13,11 @@
 class WindowObserver {
 public:
     virtual ~WindowObserver() = default;
-    virtual void onWindowShown(const std::string& window_name) {}
-    virtual void onWindowHidden(const std::string& window_name) {}
-    virtual void onTabChanged(const std::string& old_tab, const std::string& new_tab) {}
-    virtual void onPopupOpened(const std::string& popup_name) {}
-    virtual void onPopupClosed(const std::string& popup_name) {}
+    virtual void onWindowShown(const std::string& /*window_name*/) {}
+    virtual void onWindowHidden(const std::string& /*window_name*/) {}
+    virtual void onTabChanged(const std::string& /*old_tab*/, const std::string& /*new_tab*/) {}
+    virtual void onPopupOpened(const std::string& /*popup_name*/) {}
+    virtual void onPopupClosed(const std::string& /*popup_name*/) {}
 };
 
 /**

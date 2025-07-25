@@ -63,6 +63,9 @@ void ThreadedMidiClockManager::removeClockObserver(TypedObserver<ClockEvent>* ob
 void ThreadedMidiClockManager::processEvents() {
     // Process queued events from RT thread (called from UI thread)
     clock_subject_.processQueuedEvents();
+    
+    // Note: MIDI clock sending is now handled by RT observers directly from RT thread
+    // No longer calling mgr.update() here to prevent watchdog issues
 }
 
 // Transport control (thread-safe delegation to MidiClockManager)
@@ -168,7 +171,17 @@ void ThreadedMidiClockManager::clockThreadLoop() {
         
         // Sleep for precise timing
         uint32_t interval_us = getTickIntervalMicros();
+        
+#ifdef ESP32_BUILD
+        // ESP32: Conservative sleep to prevent watchdog issues
+        if (interval_us > 1000) {
+            vTaskDelay(pdMS_TO_TICKS(interval_us / 1000));
+        } else {
+            vTaskDelay(1); // Minimum delay to yield
+        }
+#else
         Threading::TaskManager::sleepMicroseconds(interval_us);
+#endif
     }
     
     std::cout << "[RT MIDI Clock] Real-time clock thread stopped" << std::endl;
@@ -195,14 +208,20 @@ void ThreadedMidiClockManager::generateClockTick() {
         // Enqueue event for UI thread (lock-free)
         enqueueClockEvent(ClockEvent::TICK, current_tick);
         
-        // Optional: Send MIDI clock message (through MidiClockManager)
-        // This should be fast and non-blocking
+        // NEW: Notify RT observers directly for immediate MIDI clock sending
         auto& mgr = MidiClockManager::getInstance();
         if (mgr.getClockSettings().send_clock) {
-            // Note: This may briefly lock, but MidiClockManager should be fast
-            // In a production system, we'd queue this too
-            mgr.update(); // This triggers sendMidiClock() internally
+            mgr.notifyRTObservers(current_tick);  // ⚡ Direct RT notification
         }
+        
+#ifdef ESP32_BUILD
+        // ESP32: Additional yielding for safety
+        static int clock_yield_counter = 0;
+        if (++clock_yield_counter >= 10) { // Yield periodically
+            vTaskDelay(1);
+            clock_yield_counter = 0;
+        }
+#endif
     }
 }
 
@@ -213,7 +232,7 @@ void ThreadedMidiClockManager::checkTransportChanges() {
         auto new_state = MidiClockManager::getInstance().getTransportState();
         if (new_state != last_transport_state_) {
             // Enqueue transport change event
-            ClockEvent::Type event_type;
+            ClockEvent::Type event_type = ClockEvent::STOP; // Default value
             switch (new_state) {
                 case MidiClockManager::TransportState::PLAYING:
                     event_type = (last_transport_state_ == MidiClockManager::TransportState::PAUSED) 

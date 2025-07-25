@@ -15,10 +15,12 @@
     #include <string>
 #endif
 
+#include "components/midi/RTClockObserver.h"
+
 // Forward declaration of the MIDI logging function
 extern "C" void logHardwareMidiInput(uint8_t status, uint8_t data1, uint8_t data2);
 
-class MidiHandler {
+class MidiHandler : public MIDI::RTClockObserver {
 private:
     bool initialized_;
     
@@ -388,5 +390,26 @@ public:
                 std::cerr << "MIDI system message send error: " << error.getMessage() << std::endl;
             }
         #endif
+    }
+    
+    // RT Clock Observer Implementation (RT-safe methods)
+    void onRTClockTick(int tick) override {
+        // Send MIDI clock immediately from RT thread
+        sendClockPulse();
+    }
+    
+    void onRTClockStart() override {
+        // Send MIDI start immediately from RT thread
+        sendStart();
+    }
+    
+    void onRTClockStop() override {
+        // Send MIDI stop immediately from RT thread
+        sendStop();
+    }
+    
+    void onRTClockContinue() override {
+        // Send MIDI continue immediately from RT thread
+        sendContinue();
     }
 };
