@@ -2,6 +2,8 @@
 
 #include "components/threading/ThreadingAbstraction.h"
 #include "components/midi/MidiClockManager.h"
+#include "components/midi/ThreadedMidiClockManager.h"
+#include "components/midi/MetronomeObserver.h"
 #include "components/midi/MidiEvents.h"
 #include "components/ui/WindowManager.h"
 #include "components/ui/SimpleClockTab.h"
@@ -47,6 +49,9 @@ private:
     
     // MIDI system (from SynthApp)
     std::shared_ptr<MidiHandler> midi_handler_;
+    
+    // Threaded MIDI observers (demonstration)
+    std::unique_ptr<MIDI::MetronomeObserver> metronome_observer_;
     
     // UI Tabs (from SynthApp)
     std::unique_ptr<MainControlTab> main_tab_;
@@ -99,8 +104,20 @@ public:
             return false;
         }
         
-        // MidiClockManager is a singleton, so we just initialize it
-        std::cout << "[ThreadedSynthApp] MIDI clock will use MidiClockManager (same as ClockTab)" << std::endl;
+        // Start the threaded MIDI clock manager
+        std::cout << "[ThreadedSynthApp] Starting threaded MIDI clock manager..." << std::endl;
+        if (!MIDI::ThreadedMidiClockManager::getInstance().start()) {
+            std::cout << "Failed to start threaded MIDI clock manager!" << std::endl;
+            return false;
+        }
+        
+        // Create and register metronome observer (demonstration)
+        metronome_observer_ = std::make_unique<MIDI::MetronomeObserver>();
+        MIDI::ThreadedMidiClockManager::getInstance().addClockObserver(metronome_observer_.get());
+        std::cout << "[ThreadedSynthApp] Metronome observer registered for clock events" << std::endl;
+        
+        // The regular MidiClockManager is still used for non-RT features
+        std::cout << "[ThreadedSynthApp] Using ThreadedMidiClockManager for RT clock generation" << std::endl;
         
         // Skip UI thread for now - use main thread like SynthApp
         // The threading advantage comes from MIDI background processing
@@ -119,7 +136,10 @@ public:
         // Handle LVGL updates (same as SynthApp)
         lv_timer_handler();
         
-        // Update MidiClockManager (handles threaded clock generation)
+        // Process threaded clock events (RT thread -> UI thread)
+        MIDI::ThreadedMidiClockManager::getInstance().processEvents();
+        
+        // Update MidiClockManager (handles non-RT features)
         MidiClockManager::getInstance().update();
         
         // Update UnifiedMidiManager (processes MIDI input from all backends)
@@ -158,11 +178,20 @@ public:
         
         initialized_.store(false);
         
+        // Remove and cleanup observers
+        if (metronome_observer_) {
+            MIDI::ThreadedMidiClockManager::getInstance().removeClockObserver(metronome_observer_.get());
+            metronome_observer_.reset();
+        }
+        
         // Stop UI thread
         if (ui_thread_) {
             ui_thread_->stop();
             ui_thread_.reset();
         }
+        
+        // Stop threaded MIDI clock manager
+        MIDI::ThreadedMidiClockManager::getInstance().stop();
         
         // Stop MIDI processor
         MidiClockManager::getInstance().stop();
@@ -349,6 +378,9 @@ private:
         while (initialized_.load()) {
             // Process LVGL
             lv_timer_handler();
+            
+            // Process threaded clock events (RT thread -> UI thread)
+            MIDI::ThreadedMidiClockManager::getInstance().processEvents();
             
             // Update MidiClockManager
             MidiClockManager::getInstance().update();
