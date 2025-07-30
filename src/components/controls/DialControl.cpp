@@ -3,6 +3,7 @@
 
 #include "DialControl.h"
 #include "ParameterControl.h"
+#include "MidiControlIntegration.h"
 #include "FontConfig.h"
 #include <lvgl.h>
 
@@ -191,24 +192,22 @@ void DialControl::updateDisplayFromParameter() {
 }
 
 void DialControl::updateParameterFromControl(uint8_t value) {
-    std::cout << "updateParameterFromControl called with value: " << (int)value << std::endl;
-    std::cout << "isParameterBound: " << isParameterBound() << std::endl;
-    std::cout << "isUpdatingFromParameter: " << isUpdatingFromParameter() << std::endl;
-    
     if (!isParameterBound() || isUpdatingFromParameter()) {
-        std::cout << "Early return from updateParameterFromControl" << std::endl;
         return;
     }
     
     auto param = getBoundParameter();
-    std::cout << "Got parameter: " << param.get() << std::endl;
     param->setValue(value);
     display_value_ = value;
     
     updateLabels();
-    std::cout << "About to call notifyValueChanged..." << std::endl;
+    
+    // Use enhanced MIDI integration for better handling
+    auto& midi_integration = MidiControlIntegration::getInstance();
+    midi_integration.handleControlValueChange(param.get(), value);
+    
+    // Still call the base notification for backward compatibility
     notifyValueChanged(value);
-    std::cout << "notifyValueChanged completed" << std::endl;
 }
 
 void DialControl::onParameterBound() {

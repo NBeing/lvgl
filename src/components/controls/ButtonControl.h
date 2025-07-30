@@ -1,13 +1,16 @@
 #pragma once
 
 #include "components/controls/ParameterControl.h"
+#include "MidiControlIntegration.h"
 #include <lvgl.h>
 #include <memory>
 #include <functional>
 
 /**
- * Button control that integrates with the parameter system.
- * Supports both momentary and toggle modes.
+ * @brief Enhanced button control with MIDI integration
+ * 
+ * Button control that integrates with the parameter system and enhanced MIDI architecture.
+ * Supports momentary, toggle, and trigger modes with improved feedback and synchronization.
  */
 class ButtonControl : public ParameterControl {
 public:

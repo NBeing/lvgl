@@ -171,34 +171,16 @@ void MainControlTab::setupButtonDefinitions() {
 }
 
 void MainControlTab::onParameterChanged(uint8_t value, const Parameter* param) {
-    std::cout << "MainControlTab::onParameterChanged called with value: " << (int)value << std::endl;
+    // The enhanced MidiControlIntegration now handles MIDI output automatically
+    // in the dial and button controls, so we just need to handle UI-specific logic here
     
-    // Send MIDI output using UnifiedMidiManager (supports both USB and hardware MIDI)
-    if (param) {
-        std::cout << "Parameter is valid, CC: " << (int)param->getCCNumber() << std::endl;
-        auto& unified_midi = UnifiedMidiManager::getInstance();
-        std::cout << "Got UnifiedMidiManager instance" << std::endl;
-        
-        // Check overall status
-        auto overall_status = unified_midi.getOverallStatus();
-        std::cout << "UnifiedMidiManager overall status: " << (int)overall_status << std::endl;
-        
-        if (unified_midi.isConnected()) {
-            std::cout << "UnifiedMidiManager is connected - sending MIDI" << std::endl;
-            unified_midi.sendControlChange(1, param->getCCNumber(), value);
-            std::cout << "MIDI CC sent: CC" << (int)param->getCCNumber() << " = " << (int)value << std::endl;
-        } else {
-            std::cout << "UnifiedMidiManager is NOT connected!" << std::endl;
-            
-            // Check individual backends
-            auto backends = unified_midi.getAvailableBackends();
-            for (const auto& backend : backends) {
-                std::cout << "Backend: " << backend.name << " - Status: " << (int)backend.status << std::endl;
-            }
-        }
-    } else {
-        std::cout << "Parameter is NULL!" << std::endl;
+    if (!param) {
+        std::cout << "MainControlTab: Warning - Parameter is NULL!" << std::endl;
+        return;
     }
+    
+    std::cout << "MainControlTab: Parameter '" << param->getName() 
+              << "' changed to " << (int)value << std::endl;
     
     // Create command for undo/redo
     if (command_manager_) {

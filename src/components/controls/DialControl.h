@@ -2,17 +2,19 @@
 
 #include "components/parameter/Parameter.h"
 #include "ParameterControl.h"
+#include "MidiControlIntegration.h"
 #include <lvgl.h>
 #include <functional>
 #include <memory>
 #include <unordered_map>
 #include <string>
+
 /**
- * @brief Parameter-aware dial control implementation
+ * @brief Enhanced parameter-aware dial control
  * 
- * This class wraps the existing MidiDial functionality with parameter awareness.
- * It automatically displays parameter names, handles value scaling, and integrates
- * with the observer pattern for synchronized updates.
+ * This class provides a modern dial control with improved MIDI integration,
+ * parameter awareness, and integration with the cleaned MIDI architecture.
+ * Features real-time value updates, MIDI feedback, and clock synchronization.
  */
 class DialControl : public ParameterControl {
 public:

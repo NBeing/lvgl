@@ -37,18 +37,26 @@ struct ParameterInfo {
         , affects_audio(false), affects_ui(true), send_midi_feedback(false)
         , automatable(true), midi_learnable(true) {
         
-        // Default linear scaling
-        normalizeValue = [this](float real_val) {
-            return (real_val - min_value) / (max_value - min_value);
+        // Don't set default lambdas in constructor - they will be set properly later
+        // This avoids the stack-use-after-return issue
+    }
+    
+    // Method to set up default linear scaling after min/max values are set
+    void setupDefaultScaling() {
+        normalizeValue = [min = min_value, max = max_value](float real_val) {
+            if (max == min) return 0.5f; // Avoid division by zero
+            return (real_val - min) / (max - min);
         };
         
-        denormalizeValue = [this](float norm_val) {
-            return min_value + norm_val * (max_value - min_value);
+        denormalizeValue = [min = min_value, max = max_value](float norm_val) {
+            return min + norm_val * (max - min);
         };
         
-        formatValue = [](float real_val) {
-            return std::to_string(real_val);
-        };
+        if (!formatValue) { // Only set if not already set
+            formatValue = [](float real_val) {
+                return std::to_string(real_val);
+            };
+        }
     }
 };
 

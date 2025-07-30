@@ -71,6 +71,7 @@ void initializeDefaultParameters() {
         resonance.midi_learnable = true;
         
         // Linear scaling for resonance
+        resonance.setupDefaultScaling(); // Set up linear normalize/denormalize
         resonance.formatValue = [](float res) {
             std::ostringstream ss;
             ss << std::fixed << std::setprecision(1) << res;
@@ -133,6 +134,7 @@ void initializeDefaultParameters() {
         volume.midi_learnable = true;
         
         // Linear scaling but dB display
+        volume.setupDefaultScaling(); // Set up linear normalize/denormalize
         volume.formatValue = [](float linear) {
             if (linear <= 0.0f) {
                 return std::string("-∞ dB");
@@ -163,6 +165,7 @@ void initializeDefaultParameters() {
         bpm.midi_learnable = true;
         
         // Linear scaling for BPM
+        bpm.setupDefaultScaling(); // Set up linear normalize/denormalize
         bpm.formatValue = [](float bpm_val) {
             return std::to_string(static_cast<int>(bpm_val + 0.5f)) + " BPM";
         };

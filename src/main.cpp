@@ -10,6 +10,9 @@
     #include "components/app/SynthApp.h"
 #endif
 
+// Include memory monitoring
+#include "components/memory/SimpleMemoryMonitor.h"
+
 #ifdef ESP32_BUILD
     #include <Arduino.h>
     // ESP32-specific includes
@@ -61,17 +64,35 @@
     int main() {
         std::cout << "=== Desktop Threaded MIDI Synth Starting ===" << std::endl;
         
+        // Initialize memory monitoring early
+        auto& memory_monitor = SimpleMemoryMonitor::getInstance();
+        memory_monitor.startMonitoring();
+        MEMORY_CHECKPOINT("Application main() started");
+        
         #if USE_THREADED_ARCHITECTURE
+            MEMORY_CHECKPOINT("Pre-threaded app initialization");
+            
             if (!app.initialize()) {
                 std::cout << "Failed to initialize threaded app!" << std::endl;
+                memory_monitor.printSummary();
                 return -1;
             }
             
             std::cout << "Threaded app initialized successfully!" << std::endl;
+            MEMORY_CHECKPOINT("Threaded app initialization complete");
             
             // Main loop
+            int loop_count = 0;
             while (true) {
                 app.loop();
+                
+                // Print memory summary periodically
+                if (++loop_count % 10000 == 0) {
+                    MEMORY_CHECKPOINT("Main loop checkpoint " + std::to_string(loop_count));
+                    if (loop_count % 100000 == 0) {
+                        memory_monitor.printSummary();
+                    }
+                }
             }
         #else
             app.setup();

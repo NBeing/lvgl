@@ -1,5 +1,6 @@
 
 #include "ButtonControl.h"
+#include "MidiControlIntegration.h"
 #include "components/parameter/Command.h"
 #include "components/parameter/CommandManager.h"
 #include <lvgl.h>
@@ -262,20 +263,14 @@ void ButtonControl::updateVisualState() {
 
 void ButtonControl::sendParameterValue(uint8_t value) {
     if (bound_parameter_) {
-        // Use command system for undo/redo support
-        if (mode_ == ButtonMode::TOGGLE) {
-            // For toggle buttons, use the specialized toggle command
-            auto command = std::make_unique<ToggleParameterCommand>(bound_parameter_.get());
-            // TODO: Get command manager from somewhere - we'll need to inject it
-            // command_manager_->executeCommand(std::move(command));
-            
-            // For now, use direct setting
-            bound_parameter_->setValue(value);
-        } else {
-            bound_parameter_->setValue(value);
-        }
+        // Set the parameter value
+        bound_parameter_->setValue(value);
         
-        // Call user callback
+        // Use enhanced MIDI integration for better handling
+        auto& midi_integration = MidiControlIntegration::getInstance();
+        midi_integration.handleControlValueChange(bound_parameter_.get(), value);
+        
+        // Call user callback for backward compatibility
         if (value_changed_callback_) {
             value_changed_callback_(value, bound_parameter_.get());
         }

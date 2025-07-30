@@ -11,6 +11,14 @@
 #include "components/midi/MidiEvents.h"
 #include "components/ui/WindowManager.h"
 #include "components/ui/SimpleClockTab.h"
+#include "components/controls/SafeMidiControlIntegration.h"
+#include "components/controls/SafeControlClockObserver.h"
+#include "components/controls/ControlClockObserver.h"
+#include "components/memory/SimpleMemoryMonitor.h"
+
+#ifdef MEMORY_STRESS_TEST
+#include "components/memory/MemoryStressTest.h"
+#endif
 // Add all the SynthApp components
 #include "components/parameter/ParameterBinder.h"
 #include "components/parameter/CommandManager.h"
@@ -62,6 +70,8 @@ private:
     std::unique_ptr<MIDI::StepSequencer> step_sequencer_;
     std::unique_ptr<MIDI::SequencerMidiOutput> sequencer_midi_output_;
     std::shared_ptr<MIDI::TimestampedMidiOutput> timestamped_midi_output_;
+    std::unique_ptr<SafeControlClockObserver> safe_control_clock_observer_;
+    std::unique_ptr<ControlClockObserver> control_clock_observer_; // Keep old one for compatibility
     
     // High-precision timing components
     std::shared_ptr<MIDI::MidiTimingThread> midi_timing_thread_;
@@ -124,6 +134,19 @@ public:
             return false;
         }
         
+        // Initialize enhanced MIDI control integration (SAFE VERSION)
+        std::cout << "[ThreadedSynthApp] Initializing safe MIDI control integration..." << std::endl;
+        SafeMidiControlIntegration::getInstance().initialize();
+        
+        // Initialize memory monitoring systems
+        std::cout << "[ThreadedSynthApp] 🛡️ Initializing memory monitoring..." << std::endl;
+        setupMemoryMonitoring();
+        
+        // Create and register safe control clock observer for tempo-synced controls
+        safe_control_clock_observer_ = std::make_unique<SafeControlClockObserver>();
+        MIDI::ThreadedMidiClockManager::getInstance().addClockObserver(safe_control_clock_observer_.get());
+        std::cout << "[ThreadedSynthApp] Safe control clock observer registered for tempo-synced controls" << std::endl;
+        
         // Create and register metronome observer (demonstration)
         metronome_observer_ = std::make_unique<MIDI::MetronomeObserver>();
         MIDI::ThreadedMidiClockManager::getInstance().addClockObserver(metronome_observer_.get());
@@ -166,6 +189,10 @@ public:
         initialized_.store(true);
         
         std::cout << "=== Threaded Synth App Initialized ===" << std::endl;
+        
+        // Final memory checkpoint
+        MEMORY_CHECKPOINT("ThreadedSynthApp fully initialized");
+        
         return true;
     }
     
@@ -257,6 +284,7 @@ public:
         auto midi_start = std::chrono::steady_clock::now();
         
         // Process threaded clock events (RT thread -> UI thread)
+        // This includes our ControlClockObserver which updates MidiControlIntegration
         MIDI::ThreadedMidiClockManager::getInstance().processEvents();
         
         // Process sequencer events (sequencer -> timestamped scheduler)
@@ -355,6 +383,38 @@ public:
     }
     
 private:
+    void setupMemoryMonitoring() {
+#ifdef MEMORY_LEAK_DETECTION
+        // Start simple memory monitoring
+        auto& monitor = SimpleMemoryMonitor::getInstance();
+        monitor.startMonitoring();
+        
+        std::cout << "[ThreadedSynthApp] ✅ Simple memory monitoring initialized" << std::endl;
+        MEMORY_CHECKPOINT("Application startup complete");
+        
+#ifdef MEMORY_STRESS_TEST
+        // Run basic stress test if enabled
+        std::cout << "[ThreadedSynthApp] 🧪 Running basic memory test..." << std::endl;
+        MEMORY_CHECKPOINT("Pre-stress test");
+        
+        // Simple allocation test
+        for (int i = 0; i < 100; ++i) {
+            void* ptr = malloc(1024);
+            MEMORY_ALLOC(1024, "stress test");
+            if (ptr) {
+                free(ptr);
+                MEMORY_DEALLOC(1024, "stress test");
+            }
+        }
+        
+        MEMORY_CHECKPOINT("Post-stress test");
+        std::cout << "[ThreadedSynthApp] ✅ Basic memory test completed" << std::endl;
+#endif
+#else
+        std::cout << "[ThreadedSynthApp] Memory monitoring disabled" << std::endl;
+#endif
+    }
+
     void initializeParameterSystem() {
         // Initialize parameter registry with default parameters
         Parameters::initializeDefaultParameters();
