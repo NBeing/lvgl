@@ -18,12 +18,12 @@
     // Use larger memory pool with PSRAM available
     #define LV_MEM_SIZE         (128U * 1024U)  // 128KB - increased back with PSRAM
 #else
-    #define LV_MEM_SIZE         (64U * 1024U)   // 64KB for desktop
+    #define LV_MEM_SIZE         (256U * 1024U)  // 256KB for desktop - increased to debug OOM
 #endif
 
 // Performance optimizations
 #define LV_USE_PERF_MONITOR     0
-#define LV_USE_MEM_MONITOR      0
+#define LV_USE_MEM_MONITOR      1    // Enable memory monitoring
 #define LV_DISP_DEF_REFR_PERIOD 5
 
 // Tick settings
