@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <set>
+#include <type_traits>
 
 // Forward declarations for dependencies
 class ParameterManager;
@@ -70,192 +71,8 @@ public:
         uint32_t last_processing_time_us{0};  // Last RT processing time
     };
 
-    /**
-     * @brief Constructor
-     */
-    BidirectionalParameterMidiBridge(
-        RTSafeEventDistributor* event_distributor,
-        ParameterManager* parameter_manager,
-        MidiHandler* midi_handler)
-        : event_distributor_(event_distributor)
-        , parameter_manager_(parameter_manager)
-        , midi_handler_(midi_handler) {
-        
-        if (!event_distributor_ || !parameter_manager_ || !midi_handler_) {
-            throw std::invalid_argument("BidirectionalParameterMidiBridge: null dependencies");
-        }
-    }
-    
-    /**
-     * @brief Initialize the bridge
-     */
-    bool initialize() {
-        if (!event_distributor_ || !parameter_manager_ || !midi_handler_) {
-            return false;
-        }
-        
-        // Register as both RT and UI observer
-        event_distributor_->addRTObserver(this);
-        event_distributor_->addUIObserver(this);
-        
-        // Set up default mappings for common synthesizer parameters
-        setupDefaultMappings();
-        
-        return true;
-    }
-    
-    /**
-     * @brief Shutdown the bridge
-     */
-    void shutdown() {
-        enabled_ = false;
-        // Note: Observer removal would need to be added to RTSafeEventDistributor
-    }
-    
-    /**
-     * @brief Add parameter ↔ MIDI CC mapping
-     */
-    bool addParameterMapping(const ParameterMapping& mapping) {
-        if (!mapping.enabled || mapping.midi_cc_number > 127) {
-            return false;
-        }
-        
-        // Add bidirectional mappings
-        cc_to_param_mappings_[mapping.midi_cc_number] = mapping;
-        param_to_cc_mappings_[mapping.parameter_id] = mapping;
-        
-        return true;
-    }
-    
-    /**
-     * @brief Remove parameter mapping
-     */
-    void removeParameterMapping(uint32_t parameter_id) {
-        auto it = param_to_cc_mappings_.find(parameter_id);
-        if (it != param_to_cc_mappings_.end()) {
-            uint8_t cc_number = it->second.midi_cc_number;
-            cc_to_param_mappings_.erase(cc_number);
-            param_to_cc_mappings_.erase(parameter_id);
-        }
-    }
-    
-    /**
-     * @brief RT Observer interface - handles RT events
-     */
-    void handleRTEvent(const RTEvent& event) override {
-        if (!enabled_) return;
-        
-        auto start_time = std::chrono::high_resolution_clock::now();
-        
-        switch (event.type) {
-            case EventType::CONTROL_CHANGE:
-                handleMidiCCInput(event);
-                break;
-                
-            case EventType::PARAMETER_CHANGE:
-                handleParameterChange(event);
-                break;
-                
-            default:
-                break;
-        }
-        
-        // Track RT timing
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
-            end_time - start_time);
-        
-        uint32_t duration_us = static_cast<uint32_t>(duration.count());
-        last_processing_time_us_ = duration_us;
-        
-        // Update max processing time atomically
-        uint32_t current_max = max_processing_time_us_.load();
-        while (duration_us > current_max && 
-               !max_processing_time_us_.compare_exchange_weak(current_max, duration_us)) {
-            // Retry if another thread updated max_processing_time_us
-        }
-    }
-    
-    /**
-     * @brief UI Observer interface - handles UI events
-     */
-    void handleUIEvent(const RTEvent& event) override {
-        if (!enabled_) return;
-        
-        // UI thread can handle more complex operations
-        switch (event.type) {
-            case EventType::CONTROL_CHANGE:
-                handleMidiCCInputUI(event);
-                break;
-                
-            case EventType::PARAMETER_CHANGE:
-                handleParameterChangeUI(event);
-                break;
-                
-            default:
-                break;
-        }
-    }
-    
-    /**
-     * @brief Get observer priority (higher = processed first)
-     */
-    int getPriority() const override {
-        return 5; // Medium priority
-    }
-    
-    /**
-     * @brief Get bridge statistics
-     */
-    BridgeStatistics getStatistics() const {
-        BridgeStatistics stats;
-        stats.midi_to_param_events = midi_to_param_events_.load();
-        stats.param_to_midi_events = param_to_midi_events_.load();
-        stats.feedback_loops_prevented = feedback_loops_prevented_.load();
-        stats.mapping_errors = mapping_errors_.load();
-        stats.midi_send_failures = midi_send_failures_.load();
-        stats.max_processing_time_us = max_processing_time_us_.load();
-        stats.last_processing_time_us = last_processing_time_us_.load();
-        return stats;
-    }
-    
-    /**
-     * @brief Reset statistics
-     */
-    void resetStatistics() {
-        midi_to_param_events_ = 0;
-        param_to_midi_events_ = 0;
-        feedback_loops_prevented_ = 0;
-        mapping_errors_ = 0;
-        midi_send_failures_ = 0;
-        max_processing_time_us_ = 0;
-        last_processing_time_us_ = 0;
-    }
-    
-    /**
-     * @brief Enable/disable the bridge
-     */
-    void setEnabled(bool enabled) {
-        enabled_ = enabled;
-    }
-    
-    bool isEnabled() const {
-        return enabled_;
-    }
-    
-    /**
-     * @brief Enable/disable feedback loop prevention
-     */
-    void setFeedbackLoopPrevention(bool prevent) {
-        prevent_feedback_loops_ = prevent;
-    }
-    
-    bool isFeedbackLoopPreventionEnabled() const {
-        return prevent_feedback_loops_;
-    }
-
 protected:
-    // Core components (accessible to derived classes for testing)
+    // Core components
     RTSafeEventDistributor* event_distributor_;
     ParameterManager* parameter_manager_;
     MidiHandler* midi_handler_;
@@ -265,16 +82,14 @@ protected:
      * These can be overridden for testing or different implementations
      */
     virtual void setParameterValueRT(uint32_t parameter_id, float value) {
-        // Default implementation - should be overridden in tests
+        // Default implementation - should be overridden
     }
-    
     virtual float getParameterValueRT(uint32_t parameter_id) {
-        // Default implementation - should be overridden in tests
+        // Default implementation - should be overridden
         return 0.0f;
     }
-    
     virtual bool sendControlChangeRT(uint8_t channel, uint8_t cc_number, uint8_t value) {
-        // Default implementation - should be overridden in tests
+        // Default implementation - should be overridden
         return false;
     }
 
@@ -299,7 +114,23 @@ private:
     // Configuration
     std::atomic<bool> enabled_{true};
     std::atomic<bool> prevent_feedback_loops_{true};
-    
+
+public:
+    /**
+     * @brief Constructor
+     */
+    BidirectionalParameterMidiBridge(
+        RTSafeEventDistributor* event_distributor,
+        ParameterManager* parameter_manager,
+        MidiHandler* midi_handler)
+        : event_distributor_(event_distributor)
+        , parameter_manager_(parameter_manager)
+        , midi_handler_(midi_handler) {
+        
+        if (!event_distributor_ || !parameter_manager_ || !midi_handler_) {
+            throw std::invalid_argument("BidirectionalParameterMidiBridge: null dependencies");
+        }
+    }
     /**
      * @brief Handle MIDI CC input in RT thread
      */
