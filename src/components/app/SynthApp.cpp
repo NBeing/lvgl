@@ -13,9 +13,17 @@
 #include "FontConfig.h"
 #include "Constants.h"
 #include "BuildConfig.h"
+
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "components/debug/EventVisualizerManager.h"
+#endif
 #include <iostream>
 #if !defined(ESP32_BUILD)
 #include <unistd.h>  // For usleep on desktop
+#endif
+
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "components/debug/EventVisualizerIntegration.h"
 #endif
 
 #if ENABLE_THREADED_MIDI
@@ -157,12 +165,20 @@ void SynthApp::initDesktop() {
     // LVGL initialization
     lv_init();
     
-    // Display setup using ESP32 screen dimensions to match hardware
-    display_ = lv_sdl_window_create(SynthConstants::ESP32_SCREEN_WIDTH, SynthConstants::ESP32_SCREEN_HEIGHT);
-    lv_sdl_window_set_title(display_, SynthConstants::Text::TITLE);
+    // Desktop window dimensions - larger to accommodate visualizer
+    #if defined(ENABLE_EVENT_VISUALIZER)
+        const lv_coord_t desktop_width = 1200;   // Wide enough for ESP32 app + visualizer
+        const lv_coord_t desktop_height = 700;   // Tall enough for full layout
+        std::cout << "[Desktop] Creating large window for visualizer: " << desktop_width << "x" << desktop_height << std::endl;
+    #else
+        const lv_coord_t desktop_width = SynthConstants::ESP32_SCREEN_WIDTH + 40;   // Just ESP32 + padding
+        const lv_coord_t desktop_height = SynthConstants::ESP32_SCREEN_HEIGHT + 80;
+        std::cout << "[Desktop] Creating small window for ESP32 simulation: " << desktop_width << "x" << desktop_height << std::endl;
+    #endif
     
-    std::cout << "[Desktop] SDL window created: " << SynthConstants::ESP32_SCREEN_WIDTH 
-              << "x" << SynthConstants::ESP32_SCREEN_HEIGHT << std::endl;
+    // Display setup
+    display_ = lv_sdl_window_create(desktop_width, desktop_height);
+    lv_sdl_window_set_title(display_, "  LVGL Synthesizer Control");
     
     // Input setup
     mouse_ = lv_sdl_mouse_create();
@@ -172,13 +188,27 @@ void SynthApp::initDesktop() {
     // Initialize layout manager for desktop environment
     LayoutManager::initialize();
     
-    std::cout << "[Desktop] LVGL initialized successfully (480x320 to match ESP32)" << std::endl;
+    std::cout << "[Desktop] LVGL initialized successfully" << std::endl;
 }
 #endif // !defined(ESP32_BUILD)
 
 void SynthApp::initWindowManager() {
     std::cout << "Initializing WindowManager..." << std::endl;
     
+    #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+        // Desktop with Event Visualizer: Create side-by-side layout
+        createDesktopWithVisualizerLayout();
+    #else
+        // Single app container (ESP32 or desktop without visualizer)
+        createSingleAppLayout();
+    #endif
+    
+    createTabs();
+    
+    std::cout << "WindowManager initialized with tabs" << std::endl;
+}
+
+void SynthApp::createSingleAppLayout() {
     // Create a constrained root container for ESP32 parity
     lv_obj_t* app_container = lv_obj_create(lv_screen_active());
     
@@ -193,17 +223,89 @@ void SynthApp::initWindowManager() {
     lv_obj_set_style_radius(app_container, 8, 0);
     lv_obj_set_style_pad_all(app_container, 0, 0);
     
-    std::cout << "[Desktop] Created constrained app container: " 
+    std::cout << "[Single App] Created constrained app container: " 
               << SynthConstants::ESP32_SCREEN_WIDTH << "x" << SynthConstants::ESP32_SCREEN_HEIGHT << std::endl;
     
-    // Create window manager with the constrained container (not the full screen)
+    // Create window manager with the constrained container
     window_manager_ = std::make_unique<WindowManager>(app_container);
     window_manager_->addObserver(this);  // Register as observer
-    
-    createTabs();
-    
-    std::cout << "WindowManager initialized with tabs" << std::endl;
 }
+
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+void SynthApp::createDesktopWithVisualizerLayout() {
+    // Get the full desktop window size 
+    lv_coord_t desktop_width = lv_display_get_horizontal_resolution(lv_display_get_default());
+    lv_coord_t desktop_height = lv_display_get_vertical_resolution(lv_display_get_default());
+    
+    std::cout << "[Desktop+Visualizer] Full desktop size: " << desktop_width << "x" << desktop_height << std::endl;
+    
+    // Create main container that fills the screen
+    lv_obj_t* main_container = lv_obj_create(lv_screen_active());
+    lv_obj_set_size(main_container, desktop_width, desktop_height);
+    lv_obj_set_pos(main_container, 0, 0);
+    lv_obj_set_style_bg_color(main_container, lv_color_hex(0x111111), 0);  // Dark background
+    lv_obj_set_style_border_width(main_container, 0, 0);
+    lv_obj_set_style_pad_all(main_container, 10, 0);
+    
+    // Calculate layout dimensions
+    const lv_coord_t padding = 10;
+    const lv_coord_t gap = 15;
+    
+    // ESP32 App Panel (left side)
+    lv_obj_t* app_panel = lv_obj_create(main_container);
+    lv_obj_set_size(app_panel, SynthConstants::ESP32_SCREEN_WIDTH, SynthConstants::ESP32_SCREEN_HEIGHT);
+    lv_obj_set_pos(app_panel, padding, padding);
+    
+    // Style the ESP32 app panel to look like the device
+    lv_obj_set_style_bg_color(app_panel, lv_color_hex(SynthConstants::Color::BG), 0);
+    lv_obj_set_style_border_color(app_panel, lv_color_hex(0xFF444444), 0);
+    lv_obj_set_style_border_width(app_panel, 2, 0);
+    lv_obj_set_style_radius(app_panel, 8, 0);
+    lv_obj_set_style_pad_all(app_panel, 0, 0);
+    
+    // Add title to app panel
+    lv_obj_t* app_title = lv_label_create(main_container);
+    lv_label_set_text(app_title, "ESP32 Synth (480x320)");
+    lv_obj_set_style_text_color(app_title, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_pos(app_title, padding, padding + SynthConstants::ESP32_SCREEN_HEIGHT + 5);
+    
+    // Event Visualizer Panel (right side)
+    lv_coord_t visualizer_width = desktop_width - SynthConstants::ESP32_SCREEN_WIDTH - (padding * 3) - gap;
+    lv_coord_t visualizer_height = desktop_height - (padding * 2);
+    
+    lv_obj_t* visualizer_panel = lv_obj_create(main_container);
+    lv_obj_set_size(visualizer_panel, visualizer_width, visualizer_height);
+    lv_obj_set_pos(visualizer_panel, SynthConstants::ESP32_SCREEN_WIDTH + padding + gap, padding);
+    
+    // Style the visualizer panel
+    lv_obj_set_style_bg_color(visualizer_panel, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_border_color(visualizer_panel, lv_color_hex(0xFF00AA00), 0);  // Green border
+    lv_obj_set_style_border_width(visualizer_panel, 2, 0);
+    lv_obj_set_style_radius(visualizer_panel, 8, 0);
+    lv_obj_set_style_pad_all(visualizer_panel, 10, 0);
+    
+    // Add title to visualizer panel
+    lv_obj_t* visualizer_title = lv_label_create(visualizer_panel);
+    lv_label_set_text(visualizer_title, "  Event Flow Visualizer");
+    lv_obj_set_style_text_color(visualizer_title, lv_color_hex(0x00FF88), 0);
+    lv_obj_set_style_text_font(visualizer_title, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(visualizer_title, 10, 10);
+    
+    // Create event visualizer instance
+    auto* manager = Debug::EventVisualizerManager::getInstance();
+    if (manager) {
+        manager->initialize(visualizer_panel);
+    }
+    
+    std::cout << "[Desktop+Visualizer] Layout created:" << std::endl;
+    std::cout << "  ESP32 App: " << SynthConstants::ESP32_SCREEN_WIDTH << "x" << SynthConstants::ESP32_SCREEN_HEIGHT << std::endl;
+    std::cout << "  Visualizer: " << visualizer_width << "x" << visualizer_height << std::endl;
+    
+    // Create window manager with the ESP32 app panel
+    window_manager_ = std::make_unique<WindowManager>(app_panel);
+    window_manager_->addObserver(this);  // Register as observer
+}
+#endif
 
 void SynthApp::createTabs() {
     // Create Main Control Tab (with undo/redo and parameter controls)

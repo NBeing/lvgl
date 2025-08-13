@@ -69,7 +69,7 @@ void TimestampedMidiOutput::processScheduledEvents() {
                 
             case ScheduledMidiEvent::NOTE_OFF:
                 midi_handler_->sendNoteOff(event.channel, event.note, 0);
-                std::cout << "[Timestamped MIDI] 🎵 Note OFF sent (latency: " 
+                std::cout << "[Timestamped MIDI]   Note OFF sent (latency: " 
                           << std::chrono::duration_cast<std::chrono::microseconds>(latency).count() 
                           << "μs)" << std::endl;
                 break;

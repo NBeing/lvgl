@@ -2,12 +2,19 @@
 
 #include "components/midi/MidiEvents.h"
 #include "components/threading/ThreadSafeSubject.h"
+#include "components/parameter/ParameterChangeEvent.h"
+#include "ParameterLockManager.h"
 #include <array>
 #include <atomic>
 #include <vector>
 #include <cstdint>
+#include <unordered_map>
+#include <memory>
 
 namespace MIDI {
+
+// Use the Parameters namespace ParameterID
+using ParameterID = Parameters::ParameterID;
 
 /**
  * @brief Step sequencer that synchronizes with MIDI clock
@@ -32,9 +39,34 @@ public:
         uint8_t length = 6;        // Note length in clock ticks (6 = 1/16th note)
         bool accent = false;       // Accent flag (increases velocity)
         
+        // Parameter locks - map parameter ID to locked value
+        std::unordered_map<ParameterID, float> parameter_locks;
+        
         Step() = default;
         Step(uint8_t n, uint8_t v = 100, bool a = false) 
             : active(true), note(n), velocity(v), accent(a) {}
+            
+        // Parameter lock methods
+        void lockParameter(ParameterID param_id, float value) {
+            parameter_locks[param_id] = value;
+        }
+        
+        void unlockParameter(ParameterID param_id) {
+            parameter_locks.erase(param_id);
+        }
+        
+        bool hasParameterLock(ParameterID param_id) const {
+            return parameter_locks.find(param_id) != parameter_locks.end();
+        }
+        
+        float getLockedParameterValue(ParameterID param_id) const {
+            auto it = parameter_locks.find(param_id);
+            return (it != parameter_locks.end()) ? it->second : 0.0f;
+        }
+        
+        size_t getParameterLockCount() const {
+            return parameter_locks.size();
+        }
     };
     
     struct Track {
@@ -97,11 +129,28 @@ public:
     void toggleStep(int track, int step);
     const Step& getStep(int track, int step) const;
     
-    // Track control
+        // Track control
     Track& getTrack(int track_id) { return tracks_[track_id]; }
     const Track& getTrack(int track_id) const { return tracks_[track_id]; }
-    void muteTrack(int track_id, bool mute = true);
-    void soloTrack(int track_id, bool solo = true);
+    void setTrackChannel(int track, uint8_t channel);
+    void muteTrack(int track, bool muted);
+    void soloTrack(int track, bool solo);
+    
+    // Parameter lock functionality
+    void setStepParameterLock(int track, int step, ParameterID param_id, float value);
+    void clearStepParameterLock(int track, int step, ParameterID param_id);
+    void clearAllStepParameterLocks(int track, int step);
+    bool hasStepParameterLock(int track, int step, ParameterID param_id) const;
+    float getStepParameterLock(int track, int step, ParameterID param_id) const;
+    std::vector<ParameterID> getStepParameterLocks(int track, int step) const;
+    
+    // Parameter lock operations
+    void copyStepParameterLocks(int src_track, int src_step, int dest_track, int dest_step);
+    size_t getTotalParameterLocks() const;
+    void clearAllParameterLocks();
+    
+    // Integration with parameter system
+    void setParameterManager(std::shared_ptr<Parameters::ParameterManager> param_manager);
     void transposeTrack(int track_id, int semitones);
     
     // Pattern control
@@ -132,6 +181,11 @@ private:
     
     // Event management
     ThreadSafeSubject<SequencerEvent> sequencer_subject_;
+    
+    // Parameter lock management
+    std::unique_ptr<ParameterLockManager> parameter_lock_manager_;
+    int last_triggered_track_;
+    int last_triggered_step_;
     
     // Active notes tracking (for note-off events)
     struct ActiveNote {

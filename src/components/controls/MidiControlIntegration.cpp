@@ -1,6 +1,10 @@
 #include "MidiControlIntegration.h"
 #include <iostream>
 
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "debug/RTEventTracer.h"
+#endif
+
 MidiControlIntegration& MidiControlIntegration::getInstance() {
     static MidiControlIntegration instance;
     return instance;
@@ -21,6 +25,12 @@ void MidiControlIntegration::handleControlValueChange(const Parameter* parameter
         std::cout << "[MidiControlIntegration] Warning: Null parameter in value change" << std::endl;
         return;
     }
+    
+    #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    // Trace the control value change
+    std::string param_data = parameter->getName() + ":" + std::to_string(value);
+    TRACE_PARAMETER_EVENT("ParameterControl", "MidiControlIntegration", "controlValueChange", param_data.c_str());
+    #endif
     
     stats_.parameter_updates++;
     
@@ -47,6 +57,12 @@ void MidiControlIntegration::sendMidiOutput(const Parameter* parameter, uint8_t 
     if (unified_midi.isConnected() && parameter->getCCNumber() > 0) {
         unified_midi.sendControlChange(1, parameter->getCCNumber(), value);
         stats_.control_changes_sent++;
+        
+        #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+        // Trace the MIDI output
+        std::string cc_data = "CC" + std::to_string(parameter->getCCNumber()) + ":" + std::to_string(value);
+        TRACE_MIDI_EVENT("MidiControlIntegration", "ExternalSynth", "sendCC", cc_data.c_str());
+        #endif
         
         std::cout << "[MidiControlIntegration] Sent MIDI CC " << (int)parameter->getCCNumber() 
                   << " = " << (int)value << std::endl;

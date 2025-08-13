@@ -4,6 +4,10 @@
 #include <iostream>
 #include "FontConfig.h"
 
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "debug/RTEventTracer.h"
+#endif
+
 // ============================================================================
 // ParameterControl Base Class Implementation
 // ============================================================================
@@ -103,6 +107,16 @@ void ParameterControl::notifyValueChanged(uint8_t value) {
     std::cout << "ParameterControl::notifyValueChanged called with value: " << (int)value << std::endl;
     std::cout << "value_changed_callback_ is " << (value_changed_callback_ ? "NOT NULL" : "NULL") << std::endl;
     std::cout << "bound_parameter_ is " << (bound_parameter_ ? "NOT NULL" : "NULL") << std::endl;
+    
+    #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    // Trace the parameter control value change
+    std::string value_data = std::to_string(value);
+    if (bound_parameter_) {
+        value_data = bound_parameter_->getName() + ":" + std::to_string(value);
+        TRACE_PARAMETER_EVENT("ParameterControl", "ParameterManager", "valueChanged", value_data.c_str());
+        TRACE_UI_EVENT("User", "ParameterControl", "controlChanged", value_data.c_str());
+    }
+    #endif
     
     if (value_changed_callback_ && bound_parameter_) {
         std::cout << "Calling value_changed_callback_..." << std::endl;

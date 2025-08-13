@@ -207,6 +207,37 @@ public:
         }
     }
     
+    // Specialized string comparison for string literals
+    static void assertEqual(const std::string& file, int line, const char* expected, const std::string& actual) {
+        if (std::string(expected) != actual) {
+            std::stringstream ss;
+            ss << "Assertion failed at " << file << ":" << line 
+               << " - Expected: " << expected << ", Actual: " << actual;
+            throw std::runtime_error(ss.str());
+        }
+    }
+    
+    static void assertEqual(const std::string& file, int line, const std::string& expected, const std::string& actual) {
+        if (expected != actual) {
+            std::stringstream ss;
+            ss << "Assertion failed at " << file << ":" << line 
+               << " - Expected: " << expected << ", Actual: " << actual;
+            throw std::runtime_error(ss.str());
+        }
+    }
+    
+    // Specialized for integer types to handle uint8_t vs int mismatches
+    template<typename T1, typename T2>
+    static void assertEqualNumeric(const std::string& file, int line, T1 expected, T2 actual) {
+        if (static_cast<long long>(expected) != static_cast<long long>(actual)) {
+            std::stringstream ss;
+            ss << "Assertion failed at " << file << ":" << line 
+               << " - Expected: " << static_cast<long long>(expected) 
+               << ", Actual: " << static_cast<long long>(actual);
+            throw std::runtime_error(ss.str());
+        }
+    }
+    
     static void assertNear(const std::string& file, int line, float expected, float actual, float tolerance) {
         if (std::abs(expected - actual) > tolerance) {
             std::stringstream ss;
@@ -278,6 +309,12 @@ public:
 
 #define ASSERT_EQ(expected, actual) \
     TestFramework::TestRunner::assertEqual(__FILE__, __LINE__, expected, actual)
+
+#define ASSERT_EQ_NUM(expected, actual) \
+    TestFramework::TestRunner::assertEqualNumeric(__FILE__, __LINE__, expected, actual)
+
+#define ASSERT_STR_EQ(expected, actual) \
+    TestFramework::TestRunner::assertEqual(__FILE__, __LINE__, std::string(expected), std::string(actual))
 
 #define ASSERT_NEAR(expected, actual, tolerance) \
     TestFramework::TestRunner::assertNear(__FILE__, __LINE__, expected, actual, tolerance)

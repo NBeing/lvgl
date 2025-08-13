@@ -136,12 +136,12 @@ public:
         std::cout << "\n=== RT MIDI Input Latency Comparison ===" << std::endl;
         
         std::cout << "\n❌ Old Approach (UI Thread Processing):" << std::endl;
-        std::cout << "Hardware → Interrupt → Queue → UI Thread (16ms) → Processing" << std::endl;
+        std::cout << "Hardware --> Interrupt --> Queue --> UI Thread (16ms) --> Processing" << std::endl;
         std::cout << "Total Latency: 16-50ms (variable)" << std::endl;
         std::cout << "Jitter: ±15ms (depends on UI load)" << std::endl;
         
         std::cout << "\n✅ New Approach (RT Thread Processing):" << std::endl;
-        std::cout << "Hardware → Interrupt → RT Thread (100μs) → Processing" << std::endl;
+        std::cout << "Hardware --> Interrupt --> RT Thread (100μs) --> Processing" << std::endl;
         std::cout << "Total Latency: 100-500μs (consistent)" << std::endl;
         std::cout << "Jitter: ±50μs (RT guaranteed)" << std::endl;
         
@@ -157,17 +157,17 @@ public:
         std::cout << "- No UI thread latency" << std::endl;
         
         std::cout << "\n🥁 Live Drum Triggering:" << std::endl;
-        std::cout << "- Pad hit → 50μs → Drum sound" << std::endl;
+        std::cout << "- Pad hit --> 50μs --> Drum sound" << std::endl;
         std::cout << "- Feels completely natural" << std::endl;
         std::cout << "- No noticeable delay" << std::endl;
         
         std::cout << "\n🎛️ Real-time Parameter Control:" << std::endl;
-        std::cout << "- Knob twist → immediate effect" << std::endl;
+        std::cout << "- Knob twist --> immediate effect" << std::endl;
         std::cout << "- Filter sweeps in perfect sync" << std::endl;
         std::cout << "- No UI update delays" << std::endl;
         
         std::cout << "\n⏰ External Clock Sync:" << std::endl;
-        std::cout << "- MIDI clock → immediate sequencer sync" << std::endl;
+        std::cout << "- MIDI clock --> immediate sequencer sync" << std::endl;
         std::cout << "- Tight timing with external gear" << std::endl;
         std::cout << "- Professional studio quality" << std::endl;
     }

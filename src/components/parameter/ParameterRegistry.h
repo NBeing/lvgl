@@ -28,9 +28,9 @@ struct ParameterInfo {
     bool midi_learnable;                // Can be MIDI learned
     
     // Value conversion functions
-    std::function<float(float)> normalizeValue;    // Real → 0.0-1.0
-    std::function<float(float)> denormalizeValue;  // 0.0-1.0 → Real
-    std::function<std::string(float)> formatValue; // Real → Display string
+    std::function<float(float)> normalizeValue;    // Real --> 0.0-1.0
+    std::function<float(float)> denormalizeValue;  // 0.0-1.0 --> Real
+    std::function<std::string(float)> formatValue; // Real --> Display string
     
     ParameterInfo() 
         : id(0), min_value(0.0f), max_value(1.0f), default_value(0.0f)

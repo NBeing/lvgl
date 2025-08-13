@@ -65,7 +65,12 @@
         "thread": "cpp",
         "typeinfo": "cpp",
         "format": "cpp",
-        "cstring": "cpp"
+        "cstring": "cpp",
+        "system_error": "cpp",
+        "regex": "cpp",
+        "variant": "cpp",
+        "charconv": "cpp",
+        "bitset": "cpp"
     },
     
     // File exclusions for better performance
@@ -107,6 +112,36 @@
     "terminal.integrated.shellArgs.linux": ["-l"],
     "platformio-ide.customPATH": [
         "/home/nbee/.platformio/penv/bin"
-    ]
+    ],
+    
+    // ============================================================================
+    // MIDI Framework Test Settings
+    // ============================================================================
+    
+    // Test discovery and execution
+    "testExplorer.showExpandButton": true,
+    "testExplorer.showCollapseButton": true,
+    "testExplorer.onStart": "reset",
+    "testExplorer.onReload": "reset",
+    "testExplorer.addToEditorContextMenu": true,
+    
+    // Task presentation for tests
+    "tasks.terminalBehavior": "alwaysNew",
+    "tasks.promptBefore.runTask": false,
+    
+    // File watching for test files
+    "files.watcherExclude": {
+        "**/test/build/**": true,
+        "**/test/**/build/**": true,
+        "**/test/**/*_test": true
+    },
+    
+    // Test file associations
+    "files.associations": {
+        "**/test/**/*.cpp": "cpp",
+        "**/test/**/*.h": "cpp",
+        "run_tests.sh": "shellscript",
+        "Makefile": "makefile"
+    }
 }
 

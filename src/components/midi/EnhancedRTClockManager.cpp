@@ -159,7 +159,7 @@ void EnhancedRTClockManager::processMidiInputRT(uint8_t status, uint8_t data1, u
             
         case 0x80: // Note Off
             event_type = RTMidiInputEvent::NOTE_INPUT;
-            std::cout << "[Enhanced RT] 🎵 RT Note OFF Ch:" << (int)channel 
+            std::cout << "[Enhanced RT]   RT Note OFF Ch:" << (int)channel 
                       << " Note:" << (int)data1 << std::endl;
             break;
             
@@ -344,7 +344,7 @@ void EnhancedRTClockManager::executeMidiEventRT(const RTScheduledEvent& event) {
             
         case RTScheduledEvent::MIDI_NOTE_OFF:
             midi_handler_->sendNoteOff(event.channel, event.data1, 0);
-            std::cout << "[Enhanced RT Clock] 🎵 RT Note OFF Ch:" << (int)event.channel 
+            std::cout << "[Enhanced RT Clock]   RT Note OFF Ch:" << (int)event.channel 
                       << " Note:" << (int)event.data1 << std::endl;
             break;
             
@@ -461,7 +461,7 @@ void EnhancedRTClockManager::handleMidiInputInRT(const RTMidiInputEvent& event) 
                 
             } else {
                 // Note Off
-                std::cout << "[Enhanced RT] 🎵 Processing Note OFF in RT: Ch" << (int)channel 
+                std::cout << "[Enhanced RT]   Processing Note OFF in RT: Ch" << (int)channel 
                           << " Note:" << (int)event.data1 << std::endl;
             }
             break;

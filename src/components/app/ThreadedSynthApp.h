@@ -16,6 +16,10 @@
 #include "components/controls/ControlClockObserver.h"
 #include "components/memory/SimpleMemoryMonitor.h"
 
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "components/debug/EventVisualizerManager.h"
+#endif
+
 #ifdef MEMORY_STRESS_TEST
 #include "components/memory/MemoryStressTest.h"
 #endif
@@ -97,6 +101,13 @@ private:
     lv_indev_t* mouse_ = nullptr;
     lv_indev_t* keyboard_ = nullptr;
     lv_indev_t* mousewheel_ = nullptr;
+#endif
+
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    // Event visualizer components
+    lv_obj_t* main_container_ = nullptr;      // Full desktop container
+    lv_obj_t* esp32_container_ = nullptr;     // ESP32-sized app area
+    lv_obj_t* visualizer_container_ = nullptr; // Event visualizer area
 #endif
     
 public:
@@ -381,6 +392,20 @@ public:
     MidiClockManager& getMidiClock() const {
         return MidiClockManager::getInstance();
     }
+
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    /**
+     * @brief Get the ESP32-sized container for the main app
+     * @return Container object for the main synthesizer interface
+     */
+    lv_obj_t* getESP32Container() const { return esp32_container_; }
+    
+    /**
+     * @brief Get the event visualizer container
+     * @return Container object for the event flow visualizer
+     */
+    lv_obj_t* getVisualizerContainer() const { return visualizer_container_; }
+#endif
     
 private:
     void setupMemoryMonitoring() {
@@ -532,6 +557,10 @@ private:
     }
     
     void createWindowManager() {
+        #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+        // Desktop with Event Visualizer: Create side-by-side layout
+        createDesktopWithVisualizerLayout();
+        #else
         // Create a constrained root container for ESP32 parity (same as SynthApp)
         lv_obj_t* app_container = lv_obj_create(lv_scr_act());
         
@@ -551,6 +580,7 @@ private:
         
         // Create window manager with the constrained container (not the full screen)
         window_manager_ = std::make_unique<WindowManager>(app_container);
+        #endif
     }
     
     void createAllTabs() {
@@ -632,4 +662,16 @@ private:
         
         std::cout << "[UI Thread] Stopped" << std::endl;
     }
+
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    /**
+     * @brief Create desktop layout with ESP32 container and event visualizer
+     */
+    void createDesktopWithVisualizerLayout();
+    
+    /**
+     * @brief Initialize the event visualizer system
+     */
+    void initializeEventVisualizer();
+#endif
 };

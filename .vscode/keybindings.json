@@ -3,5 +3,45 @@
         "key": "ctrl+shift+alt+u",
         "command": "workbench.action.tasks.runTask",
         "args": "PIO: Build and Upload ESP32"
+    },
+    
+    // ============================================================================
+    // MIDI Framework Test Keyboard Shortcuts
+    // ============================================================================
+    {
+        "key": "ctrl+shift+t",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Test: Run All Tests",
+        "when": "editorTextFocus"
+    },
+    {
+        "key": "ctrl+shift+u",
+        "command": "workbench.action.tasks.runTask", 
+        "args": "Test: Unit Tests",
+        "when": "editorTextFocus"
+    },
+    {
+        "key": "ctrl+shift+i",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Test: Integration Tests", 
+        "when": "editorTextFocus"
+    },
+    {
+        "key": "ctrl+shift+m",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Test: MIDI Components",
+        "when": "editorTextFocus"
+    },
+    {
+        "key": "ctrl+shift+h",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Test: Thread Safety",
+        "when": "editorTextFocus"
+    },
+    {
+        "key": "ctrl+shift+q",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Test: Quick MIDI Validation",
+        "when": "editorTextFocus"
     }
 ]

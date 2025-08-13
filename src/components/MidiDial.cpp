@@ -3,6 +3,9 @@
 // ==============================================
 #include "components/MidiDial.h"
 
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "debug/RTEventTracer.h"
+#endif
 
 #include "../../include/FontConfig.h"
 
@@ -98,6 +101,18 @@ void MidiDial::setValue(int value) {
     if (current_value_ != value) {
         current_value_ = value;
         updateDisplay();
+        
+        #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+        // Trace the MIDI dial value change
+        std::string value_data = std::to_string(value);
+        if (midi_cc_ >= 0) {
+            value_data = "CC" + std::to_string(midi_cc_) + ":" + std::to_string(value);
+        }
+        std::cout << "*** TRACING MIDI DIAL EVENT: " << value_data << " ***" << std::endl;
+        TRACE_MIDI_EVENT("MidiDial", "ParameterManager", "valueChanged", value_data.c_str());
+        TRACE_UI_EVENT("User", "MidiDial", "dialChanged", value_data.c_str());
+        std::cout << "*** TRACE EVENTS SENT ***" << std::endl;
+        #endif
         
         if (value_callback_) {
             value_callback_(value);

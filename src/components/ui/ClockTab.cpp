@@ -4,6 +4,9 @@
 #include "components/settings/SettingsManager.h"
 #include "components/midi/HardwareMidiManager.h"
 #include "components/ui/ContainerFactory.h"
+#include "components/debug/EventVisualizerIntegration.h"
+#include "components/debug/RTEventTracer.h"
+#include "components/debug/TracedCallbacks.h"
 
 #include <iostream>
 
@@ -77,6 +80,32 @@ void ClockTab::create(lv_obj_t* parent) {
 
     // Register with clock manager for callbacks
     auto& clock_manager = MidiClockManager::getInstance();
+    
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    // Traced callbacks for event visualization
+    clock_manager.setTransportChangedCallback([this](auto old_state, auto new_state) {
+        TRACE_UI_EVENT("MidiClockManager", "ClockTab", "onTransportChanged", "");
+        onTransportChanged(new_state);
+    });
+    
+    clock_manager.setClockTickCallback([this](int tick) {
+        TRACE_CLOCK_EVENT("MidiClockManager", "ClockTab", "onClockTick", std::to_string(tick).c_str());
+        onClockTick(tick);
+    });
+    
+    // BPM callback NOT traced - too frequent for visualization
+    clock_manager.setBPMChangedCallback([this](float bpm) {
+        onBPMChanged(bpm);
+    });
+    
+    // Traced settings observer
+    SettingsManager::getInstance().addObserver("ClockTab", 
+        [this](const std::string& key, const std::any& old_val, const std::any& new_val) {
+            TRACE_SETTINGS_EVENT("SettingsManager", "ClockTab", "onSettingChanged", key.c_str());
+            onSettingChanged(key);
+        });
+#else
+    // Original callbacks - no tracing overhead
     clock_manager.setTransportChangedCallback([this](auto old_state, auto new_state) {
         onTransportChanged(new_state);
     });
@@ -86,12 +115,13 @@ void ClockTab::create(lv_obj_t* parent) {
     clock_manager.setBPMChangedCallback([this](float bpm) {
         onBPMChanged(bpm);
     });
-
+    
     // Register with settings manager
     SettingsManager::getInstance().addObserver("ClockTab",
         [this](const std::string& key, const std::any& old_val, const std::any& new_val) {
             onSettingChanged(key);
         });
+#endif
     settings_observer_registered_ = true;
 
     // Sync initial settings
@@ -119,9 +149,18 @@ void ClockTab::createClockControls() {
     // Create transport control component
     transport_control_ = std::make_unique<TransportControl>();
     transport_control_->create(controls_container_);
+    
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    // Traced transport control callback
+    transport_control_->setTransportChangedCallback([this](auto state) {
+        TRACE_UI_EVENT("TransportControl", "ClockTab", "transportChanged", std::to_string(static_cast<int>(state)));
+        onTransportChanged(state);
+    });
+#else
     transport_control_->setTransportChangedCallback([this](auto state) {
         onTransportChanged(state);
     });
+#endif
 }
 
 void ClockTab::createTempoControls() {
@@ -378,6 +417,10 @@ void ClockTab::syncSettingsToClockManager() {
 }
 
 void ClockTab::onTransportChanged(MidiClockManager::TransportState state) {
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    TRACE_UI_EVENT("ClockTab", "TransportControl", "updateTransportState", std::to_string(static_cast<int>(state)));
+#endif
+    
     if (transport_control_) {
         transport_control_->updateTransportState(state);
     }
@@ -410,12 +453,20 @@ void ClockTab::onBPMChanged(float new_bpm) {
 }
 
 void ClockTab::onTempoUpClicked() {
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    TRACE_UI_EVENT("ClockTab", "MidiClockManager", "setBPM", "tempo_up");
+#endif
+    
     auto& clock_manager = MidiClockManager::getInstance();
     float current_bpm = clock_manager.getBPM();
     clock_manager.setBPM(current_bpm + 1.0f);
 }
 
 void ClockTab::onTempoDownClicked() {
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    TRACE_UI_EVENT("ClockTab", "MidiClockManager", "setBPM", "tempo_down");
+#endif
+    
     auto& clock_manager = MidiClockManager::getInstance();
     float current_bpm = clock_manager.getBPM();
     clock_manager.setBPM(current_bpm - 1.0f);
@@ -523,6 +574,10 @@ void ClockTab::updateStatusDisplay() {
 }
 
 void ClockTab::onMidiTestClicked() {
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    TRACE_UI_EVENT("ClockTab", "HardwareMidiManager", "midiTestSequence", "test_button_clicked");
+#endif
+    
     std::cout << "ClockTab: MIDI Test button clicked!" << std::endl;
     
     auto& hw_midi = HardwareMidiManager::getInstance();
@@ -551,6 +606,11 @@ void ClockTab::onMidiTestClicked() {
     hw_midi.sendNoteOff(1, 60, 0);
     hw_midi.sendNoteOff(1, 64, 0);
     hw_midi.sendNoteOff(1, 67, 0);
+    
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    TRACE_MIDI_EVENT("HardwareMidiManager", "ExternalSynth", "testSequenceComplete", 
+                    std::to_string(hw_midi.getMessagesSent()));
+#endif
     
     std::cout << "MIDI test complete - Messages: " << hw_midi.getMessagesSent() 
               << ", Clock pulses: " << hw_midi.getClockPulsesSent() << std::endl;

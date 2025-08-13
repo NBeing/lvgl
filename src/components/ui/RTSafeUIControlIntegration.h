@@ -83,8 +83,8 @@ public:
      * @brief Statistics for monitoring (non-atomic for return)
      */
     struct IntegrationStatistics {
-        uint64_t ui_to_param_updates{0};     // UI → Parameter
-        uint64_t param_to_ui_updates{0};     // Parameter → UI
+        uint64_t ui_to_param_updates{0};     // UI --> Parameter
+        uint64_t param_to_ui_updates{0};     // Parameter --> UI
         uint64_t smooth_interpolations{0};   // Smooth value changes
         uint64_t validation_failures{0};     // Value validation failures
         uint32_t active_controls{0};         // Currently active controls
@@ -103,9 +103,9 @@ private:
     RTSafeParameterManager* parameter_manager_;
     
     // Control management
-    std::unordered_map<uint32_t, ControlConfig> control_configs_;     // Control ID → Config
-    std::unordered_map<uint32_t, ControlState> control_states_;       // Control ID → State
-    std::unordered_map<uint32_t, uint32_t> param_to_control_map_;     // Parameter ID → Control ID
+    std::unordered_map<uint32_t, ControlConfig> control_configs_;     // Control ID --> Config
+    std::unordered_map<uint32_t, ControlState> control_states_;       // Control ID --> State
+    std::unordered_map<uint32_t, uint32_t> param_to_control_map_;     // Parameter ID --> Control ID
     
     // UI callbacks
     UIUpdateCallback ui_update_callback_;

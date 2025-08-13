@@ -41,7 +41,7 @@ void MidiParameterBridge::processMidiCC(uint8_t channel, uint8_t cc, uint8_t val
         
         std::cout << "[MidiParameterBridge] 🎛️ MIDI CC" << (int)cc 
                   << " Ch" << (int)channel << " (" << (int)value 
-                  << ") → Parameter " << mapped_param 
+                  << ") --> Parameter " << mapped_param 
                   << " (" << normalized_value << ")" << std::endl;
     } else {
         // Handle MIDI learn if active

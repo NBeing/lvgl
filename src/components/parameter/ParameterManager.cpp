@@ -96,7 +96,7 @@ void ParameterManager::processParameterChange(const ParameterChangeEvent& event)
             assignMidiCC(learn_param, event.midi_channel, event.midi_cc);
             stopMidiLearn();
             std::cout << "[ParameterManager] 🎹 MIDI learned: CC" << (int)event.midi_cc 
-                      << " → Parameter " << learn_param << std::endl;
+                      << " --> Parameter " << learn_param << std::endl;
         }
     }
     
@@ -181,7 +181,7 @@ void ParameterManager::assignMidiCC(ParameterID parameter_id, uint8_t channel, u
     uint16_t mapping_key = (static_cast<uint16_t>(channel) << 8) | cc;
     midi_cc_mappings_[mapping_key] = parameter_id;
     std::cout << "[ParameterManager] Assigned MIDI CC" << (int)cc 
-              << " Ch" << (int)channel << " → Parameter " << parameter_id << std::endl;
+              << " Ch" << (int)channel << " --> Parameter " << parameter_id << std::endl;
 }
 
 void ParameterManager::removeMidiCC(uint8_t channel, uint8_t cc) {

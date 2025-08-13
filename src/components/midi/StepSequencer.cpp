@@ -1,15 +1,24 @@
 #include "StepSequencer.h"
+#include "ParameterLockManager.h"
 #include <algorithm>
 #include <random>
 #include <iostream>
 
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "debug/RTEventTracer.h"
+#endif
+
 namespace MIDI {
 
-StepSequencer::StepSequencer() {
+StepSequencer::StepSequencer() 
+    : last_triggered_track_(-1), last_triggered_step_(-1) {
     // Initialize tracks with default settings
     for (int i = 0; i < MAX_TRACKS; ++i) {
         tracks_[i].channel = i + 1; // MIDI channels 1-8
     }
+    
+    // Initialize parameter lock manager
+    parameter_lock_manager_ = std::make_unique<ParameterLockManager>();
 }
 
 void StepSequencer::onEvent(const ClockEvent& event) {
@@ -76,6 +85,11 @@ void StepSequencer::processClockTick(int tick_count) {
 }
 
 void StepSequencer::processStepTriggers(int step) {
+    // First, restore parameter locks from the previous step
+    if (last_triggered_track_ >= 0 && last_triggered_step_ >= 0) {
+        parameter_lock_manager_->restoreParametersFromStep(last_triggered_track_, last_triggered_step_);
+    }
+    
     for (int track_id = 0; track_id < MAX_TRACKS; ++track_id) {
         const auto& track = tracks_[track_id];
         
@@ -87,6 +101,19 @@ void StepSequencer::processStepTriggers(int step) {
         
         const auto& step_data = track.steps[step];
         if (step_data.active) {
+            // Apply parameter locks for this step BEFORE triggering the note
+            if (!step_data.parameter_locks.empty()) {
+                parameter_lock_manager_->applyStepParameterLocks(track_id, step, step_data.parameter_locks);
+                last_triggered_track_ = track_id;
+                last_triggered_step_ = step;
+                
+                #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+                std::string lock_data = "T" + std::to_string(track_id) + "S" + std::to_string(step) + 
+                                       " Locks:" + std::to_string(step_data.parameter_locks.size());
+                TRACE_PARAMETER_EVENT("StepSequencer", "ParameterLockManager", "applyStepLocks", lock_data.c_str());
+                #endif
+            }
+            
             triggerNote(track_id, step, step_data);
         }
     }
@@ -117,7 +144,7 @@ void StepSequencer::triggerNote(int track_id, int step_id, const Step& step) {
     note_on.channel = track.channel;
     sequencer_subject_.enqueueEvent(note_on);
     
-    std::cout << "[Sequencer] 🎵 Track " << track_id + 1 
+    std::cout << "[Sequencer]   Track " << track_id + 1 
               << " Step " << step_id + 1 
               << " Note " << static_cast<int>(final_note) 
               << " Vel " << final_velocity 
@@ -289,6 +316,120 @@ void StepSequencer::shiftPattern(int track_id, int steps) {
 void StepSequencer::enqueueSequencerEvent(SequencerEvent::Type type, int track, int step) {
     SequencerEvent event(type, track, step);
     sequencer_subject_.enqueueEvent(event);
+}
+
+// ============================================================================
+// Parameter Lock API Implementation
+// ============================================================================
+
+void StepSequencer::setParameterManager(std::shared_ptr<Parameters::ParameterManager> param_manager) {
+    if (parameter_lock_manager_) {
+        parameter_lock_manager_->setParameterManager(param_manager);
+    }
+}
+
+void StepSequencer::setStepParameterLock(int track, int step, ParameterID param_id, float value) {
+    if (track < 0 || track >= MAX_TRACKS || step < 0 || step >= MAX_STEPS) return;
+    
+    // Set lock in the step data
+    tracks_[track].steps[step].lockParameter(param_id, value);
+    
+    // Also store in the parameter lock manager for global operations
+    if (parameter_lock_manager_) {
+        parameter_lock_manager_->setStepParameterLock(track, step, param_id, value);
+    }
+    
+    #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    std::string lock_data = "T" + std::to_string(track) + "S" + std::to_string(step) + 
+                           " P" + std::to_string(static_cast<int>(param_id)) + ":" + std::to_string(value);
+    TRACE_PARAMETER_EVENT("StepSequencer", "ParameterLockManager", "setParameterLock", lock_data.c_str());
+    #endif
+}
+
+void StepSequencer::clearStepParameterLock(int track, int step, ParameterID param_id) {
+    if (track < 0 || track >= MAX_TRACKS || step < 0 || step >= MAX_STEPS) return;
+    
+    // Clear from step data
+    tracks_[track].steps[step].unlockParameter(param_id);
+    
+    // Clear from parameter lock manager
+    if (parameter_lock_manager_) {
+        parameter_lock_manager_->clearStepParameterLock(track, step, param_id);
+    }
+}
+
+void StepSequencer::clearAllStepParameterLocks(int track, int step) {
+    if (track < 0 || track >= MAX_TRACKS || step < 0 || step >= MAX_STEPS) return;
+    
+    // Clear from step data
+    tracks_[track].steps[step].parameter_locks.clear();
+    
+    // Clear from parameter lock manager
+    if (parameter_lock_manager_) {
+        parameter_lock_manager_->clearStepLocks(track, step);
+    }
+}
+
+bool StepSequencer::hasStepParameterLock(int track, int step, ParameterID param_id) const {
+    if (track < 0 || track >= MAX_TRACKS || step < 0 || step >= MAX_STEPS) return false;
+    
+    return tracks_[track].steps[step].hasParameterLock(param_id);
+}
+
+float StepSequencer::getStepParameterLock(int track, int step, ParameterID param_id) const {
+    if (track < 0 || track >= MAX_TRACKS || step < 0 || step >= MAX_STEPS) return 0.0f;
+    
+    return tracks_[track].steps[step].getLockedParameterValue(param_id);
+}
+
+std::vector<ParameterID> StepSequencer::getStepParameterLocks(int track, int step) const {
+    std::vector<ParameterID> locked_params;
+    
+    if (track >= 0 && track < MAX_TRACKS && step >= 0 && step < MAX_STEPS) {
+        const auto& step_data = tracks_[track].steps[step];
+        for (const auto& [param_id, value] : step_data.parameter_locks) {
+            locked_params.push_back(param_id);
+        }
+    }
+    
+    return locked_params;
+}
+
+void StepSequencer::copyStepParameterLocks(int src_track, int src_step, int dest_track, int dest_step) {
+    if (src_track < 0 || src_track >= MAX_TRACKS || src_step < 0 || src_step >= MAX_STEPS ||
+        dest_track < 0 || dest_track >= MAX_TRACKS || dest_step < 0 || dest_step >= MAX_STEPS) {
+        return;
+    }
+    
+    // Copy parameter locks in step data
+    const auto& src_locks = tracks_[src_track].steps[src_step].parameter_locks;
+    tracks_[dest_track].steps[dest_step].parameter_locks = src_locks;
+    
+    // Copy in parameter lock manager
+    if (parameter_lock_manager_) {
+        parameter_lock_manager_->copyStepLocks(src_track, src_step, dest_track, dest_step);
+    }
+}
+
+size_t StepSequencer::getTotalParameterLocks() const {
+    if (parameter_lock_manager_) {
+        return parameter_lock_manager_->getTotalParameterLocks();
+    }
+    return 0;
+}
+
+void StepSequencer::clearAllParameterLocks() {
+    // Clear all parameter locks from all steps
+    for (int track = 0; track < MAX_TRACKS; ++track) {
+        for (int step = 0; step < MAX_STEPS; ++step) {
+            tracks_[track].steps[step].parameter_locks.clear();
+        }
+    }
+    
+    // Clear from parameter lock manager
+    if (parameter_lock_manager_) {
+        parameter_lock_manager_->clearAllParameterLocks();
+    }
 }
 
 } // namespace MIDI

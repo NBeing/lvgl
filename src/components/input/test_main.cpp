@@ -39,13 +39,13 @@ void inputSystemExample() {
     synth_handler.initialize();
     
     std::cout << "Input system initialized with default mappings:" << std::endl;
-    std::cout << "  SPACE     → Play/Pause transport" << std::endl;
-    std::cout << "  ESC       → Stop transport" << std::endl;
-    std::cout << "  ENTER     → Continue transport" << std::endl;
-    std::cout << "  +/-       → Increase/Decrease BPM" << std::endl;
-    std::cout << "  TAB       → Next tab" << std::endl;
-    std::cout << "  SHIFT+TAB → Previous tab" << std::endl;
-    std::cout << "  F1        → Help" << std::endl;
+    std::cout << "  SPACE     --> Play/Pause transport" << std::endl;
+    std::cout << "  ESC       --> Stop transport" << std::endl;
+    std::cout << "  ENTER     --> Continue transport" << std::endl;
+    std::cout << "  +/-       --> Increase/Decrease BPM" << std::endl;
+    std::cout << "  TAB       --> Next tab" << std::endl;
+    std::cout << "  SHIFT+TAB --> Previous tab" << std::endl;
+    std::cout << "  F1        --> Help" << std::endl;
     
     // Simulate some key presses
     std::cout << "\nSimulating key presses..." << std::endl;

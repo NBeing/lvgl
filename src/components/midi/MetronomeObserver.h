@@ -82,7 +82,7 @@ private:
         
         if (elapsed > 0 && beat_count_ > 0) {
             float actual_bpm = (beat_count_ * 60000.0f) / elapsed;
-            std::cout << "[Metronome] 🎵 Actual BPM: " << std::fixed << std::setprecision(1) << actual_bpm << std::endl;
+            std::cout << "[Metronome]   Actual BPM: " << std::fixed << std::setprecision(1) << actual_bpm << std::endl;
         }
     }
     

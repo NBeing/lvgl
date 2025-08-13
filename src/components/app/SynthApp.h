@@ -99,4 +99,10 @@ private:
     #endif
     void initWindowManager();
     void createTabs();
+    
+    // Layout creation methods
+    void createSingleAppLayout();
+    #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    void createDesktopWithVisualizerLayout();
+    #endif
 };

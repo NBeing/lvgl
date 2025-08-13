@@ -22,7 +22,7 @@ void SequencerMidiOutput::onEvent(const StepSequencer::SequencerEvent& event) {
         case StepSequencer::SequencerEvent::NOTE_OFF:
             sendNoteOff(event.channel, event.note);
             note_off_count_++;
-            std::cout << "[MIDI Out] 🎵 Note OFF Ch:" << static_cast<int>(event.channel) 
+            std::cout << "[MIDI Out]   Note OFF Ch:" << static_cast<int>(event.channel) 
                       << " Note:" << static_cast<int>(event.note) << std::endl;
             break;
             

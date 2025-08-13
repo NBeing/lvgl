@@ -25,8 +25,8 @@ namespace RTSafe {
  * @brief Bidirectional MIDI-Parameter Bridge
  * 
  * Provides RT-safe bidirectional synchronization between:
- * - UI Parameter Changes → MIDI CC Output
- * - MIDI CC Input → Parameter Updates → UI Updates
+ * - UI Parameter Changes --> MIDI CC Output
+ * - MIDI CC Input --> Parameter Updates --> UI Updates
  * 
  * Key Features:
  * - RT-safe operation (no blocking in audio thread)
@@ -62,8 +62,8 @@ public:
      * @brief Bridge statistics for monitoring (non-atomic for return)
      */
     struct BridgeStatistics {
-        uint64_t midi_to_param_events{0};     // MIDI → Parameter
-        uint64_t param_to_midi_events{0};     // Parameter → MIDI
+        uint64_t midi_to_param_events{0};     // MIDI --> Parameter
+        uint64_t param_to_midi_events{0};     // Parameter --> MIDI
         uint64_t feedback_loops_prevented{0}; // Feedback prevention
         uint64_t mapping_errors{0};           // Invalid mappings
         uint64_t midi_send_failures{0};       // MIDI output failures
@@ -94,7 +94,7 @@ protected:
     }
 
 private:
-    // Parameter mappings (CC number → mapping)
+    // Parameter mappings (CC number --> mapping)
     std::unordered_map<uint8_t, ParameterMapping> cc_to_param_mappings_;
     std::unordered_map<uint32_t, ParameterMapping> param_to_cc_mappings_;
     
@@ -280,7 +280,7 @@ public:
      * @brief Set up default parameter mappings
      */
     void setupDefaultMappings() {
-        // Filter Cutoff → MIDI CC 74
+        // Filter Cutoff --> MIDI CC 74
         ParameterMapping filter_cutoff;
         filter_cutoff.parameter_id = 1001; // Filter Cutoff ID
         filter_cutoff.midi_channel = 0;    // Channel 1 (0-indexed)
@@ -291,7 +291,7 @@ public:
         filter_cutoff.enabled = true;
         addParameterMapping(filter_cutoff);
         
-        // Filter Resonance → MIDI CC 71
+        // Filter Resonance --> MIDI CC 71
         ParameterMapping filter_resonance;
         filter_resonance.parameter_id = 1002; // Filter Resonance ID
         filter_resonance.midi_channel = 0;
@@ -302,7 +302,7 @@ public:
         filter_resonance.enabled = true;
         addParameterMapping(filter_resonance);
         
-        // Envelope Attack → MIDI CC 73
+        // Envelope Attack --> MIDI CC 73
         ParameterMapping env_attack;
         env_attack.parameter_id = 2001; // Envelope Attack ID
         env_attack.midi_channel = 0;
@@ -313,7 +313,7 @@ public:
         env_attack.enabled = true;
         addParameterMapping(env_attack);
         
-        // Master Volume → MIDI CC 7
+        // Master Volume --> MIDI CC 7
         ParameterMapping master_volume;
         master_volume.parameter_id = 4001; // Master Volume ID
         master_volume.midi_channel = 0;

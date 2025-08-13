@@ -1,6 +1,10 @@
 #include "HardwareMidiBackend.h"
 #include <iostream>
 
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "debug/RTEventTracer.h"
+#endif
+
 // Forward declaration to avoid circular dependency
 class UnifiedMidiManager;
 
@@ -195,24 +199,68 @@ void HardwareMidiBackend::handleCompleteMessage(uint8_t status, uint8_t data1, u
     switch (msg_type) {
         case 0x90:
             // std::cout << "Note On Ch" << (int)channel << " Note:" << (int)data1 << " Vel:" << (int)data2;
+            #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+            {
+                std::string note_data = "Ch" + std::to_string(channel) + " Note:" + std::to_string(data1) + " Vel:" + std::to_string(data2);
+                TRACE_MIDI_EVENT("ExternalController", "HardwareMidiBackend", "noteOn", note_data.c_str());
+            }
+            #endif
             break;
         case 0x80:
             // std::cout << "Note Off Ch" << (int)channel << " Note:" << (int)data1 << " Vel:" << (int)data2;
+            #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+            {
+                std::string note_data = "Ch" + std::to_string(channel) + " Note:" + std::to_string(data1) + " Vel:" + std::to_string(data2);
+                TRACE_MIDI_EVENT("ExternalController", "HardwareMidiBackend", "noteOff", note_data.c_str());
+            }
+            #endif
             break;
         case 0xB0:
             // std::cout << "CC Ch" << (int)channel << " CC:" << (int)data1 << " Val:" << (int)data2;
+            #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+            {
+                std::string cc_data = "Ch" + std::to_string(channel) + " CC:" + std::to_string(data1) + " Val:" + std::to_string(data2);
+                TRACE_MIDI_EVENT("ExternalController", "HardwareMidiBackend", "controlChange", cc_data.c_str());
+            }
+            #endif
             break;
         case 0xC0:
             // std::cout << "Program Change Ch" << (int)channel << " Program:" << (int)data1;
+            #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+            {
+                std::string pc_data = "Ch" + std::to_string(channel) + " Program:" + std::to_string(data1);
+                TRACE_MIDI_EVENT("ExternalController", "HardwareMidiBackend", "programChange", pc_data.c_str());
+            }
+            #endif
             break;
         case 0xE0:
             // std::cout << "Pitch Bend Ch" << (int)channel << " Value:" << ((data2 << 7) | data1);
+            #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+            {
+                std::string pb_data = "Ch" + std::to_string(channel) + " Value:" + std::to_string((data2 << 7) | data1);
+                TRACE_MIDI_EVENT("ExternalController", "HardwareMidiBackend", "pitchBend", pb_data.c_str());
+            }
+            #endif
             break;
         default:
             if (status >= 0xF8) {
                 // std::cout << "Real-time: 0x" << std::hex << (int)status << std::dec;
+                #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+                {
+                    char rt_data[16];
+                    snprintf(rt_data, sizeof(rt_data), "0x%02X", status);
+                    TRACE_MIDI_EVENT("ExternalController", "HardwareMidiBackend", "realTime", rt_data);
+                }
+                #endif
             } else {
                 // std::cout << "0x" << std::hex << (int)status << " 0x" << (int)data1 << " 0x" << (int)data2 << std::dec;
+                #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+                {
+                    char sys_data[32];
+                    snprintf(sys_data, sizeof(sys_data), "0x%02X 0x%02X 0x%02X", status, data1, data2);
+                    TRACE_MIDI_EVENT("ExternalController", "HardwareMidiBackend", "sysex", sys_data);
+                }
+                #endif
             }
             break;
     }

@@ -8,6 +8,10 @@
 #include "components/parameter/Parameter.h"
 #include "hardware/MidiHandler.h"
 #include "components/midi/UnifiedMidiManager.h"
+
+#if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+#include "debug/RTEventTracer.h"
+#endif
 #include "components/parameter/Command.h"  // For SetParameterCommand
 #include "Constants.h"
 #include "components/ui/ContainerFactory.h"
@@ -178,6 +182,13 @@ void MainControlTab::onParameterChanged(uint8_t value, const Parameter* param) {
         std::cout << "MainControlTab: Warning - Parameter is NULL!" << std::endl;
         return;
     }
+    
+    #if defined(DESKTOP_BUILD) && defined(ENABLE_EVENT_VISUALIZER)
+    // Trace the UI parameter change event
+    std::string param_data = param->getName() + ":" + std::to_string(value);
+    TRACE_UI_EVENT("ParameterControl", "MainControlTab", "parameterChanged", param_data.c_str());
+    TRACE_PARAMETER_EVENT("MainControlTab", "CommandManager", "createCommand", param_data.c_str());
+    #endif
     
     std::cout << "MainControlTab: Parameter '" << param->getName() 
               << "' changed to " << (int)value << std::endl;

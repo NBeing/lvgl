@@ -9,13 +9,13 @@
  * @brief Thread-safe subject for observer pattern
  * 
  * Safely queues events for observers and processes them on the UI thread.
- * Uses a combination of lock-free queues for RT → UI communication and
+ * Uses a combination of lock-free queues for RT --> UI communication and
  * standard containers for UI thread processing.
  */
 template<typename EventType>
 class ThreadSafeSubject {
 private:
-    // Event queue for RT → UI thread communication
+    // Event queue for RT --> UI thread communication
     LockFreeQueue<EventType, 2048> event_queue_;
     
     // Observer list (UI thread only) - using void* to be compatible with any observer type

@@ -116,8 +116,8 @@ private:
     RTSafeEventDistributor* event_distributor_;
     
     // Parameter storage
-    std::unordered_map<uint32_t, ParameterDefinition> parameter_definitions_; // Parameter ID → Definition
-    std::unordered_map<uint32_t, std::unique_ptr<ParameterState>> parameter_states_; // Parameter ID → State
+    std::unordered_map<uint32_t, ParameterDefinition> parameter_definitions_; // Parameter ID --> Definition
+    std::unordered_map<uint32_t, std::unique_ptr<ParameterState>> parameter_states_; // Parameter ID --> State
     
     // Callbacks and notifications
     ParameterChangeCallback parameter_change_callback_;
