@@ -167,7 +167,11 @@ public:
     
     void reconnectDevice(const std::string& device_name, uint8_t channel) {
         auto it = devices_.find(device_name);
-        if (it != devices_.end()) it->second->reconnect();
+        if (it != devices_.end()) {
+            it->second->reconnect();
+            // Note: channel parameter reserved for future channel-specific reconnection
+            (void)channel; // Suppress unused parameter warning
+        }
     }
     
     std::shared_ptr<MockExternalSynth> getDevice(const std::string& device_name) const {

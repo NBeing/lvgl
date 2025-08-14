@@ -1,7 +1,7 @@
-# LVGL MIDI Framework Test Makefile
-# Simple commands for building and running tests
+# LVGL MIDI Framework Test Makefile - Enhanced Edition
+# Features: Test filtering, comprehensive error reporting, and easy setup
 
-.PHONY: test test-unit test-integration test-system clean help
+.PHONY: test test-unit test-integration test-system clean help setup-ignore show-ignore
 
 # Default target
 test:
@@ -47,13 +47,25 @@ build-system:
 clean:
 	@./run_tests.sh clean
 
-# Help
+# Test filtering and configuration
+setup-ignore:
+	@./run_tests.sh ignore-setup
+
+show-ignore:
+	@echo "Current test ignore patterns:"
+	@if [ -f .test_ignore ]; then \
+		grep -v '^#' .test_ignore | grep -v '^[[:space:]]*$$' | sed 's/^/  • /'; \
+	else \
+		echo "  No ignore configuration found. Run 'make setup-ignore' to create one."; \
+	fi
+
+# Help with enhanced features
 help:
-	@echo "LVGL MIDI Framework Test Commands"
-	@echo "================================="
+	@echo "LVGL MIDI Framework Test Commands - Enhanced Edition"
+	@echo "===================================================="
 	@echo ""
 	@echo "Main Commands:"
-	@echo "  make test              Run all tests"
+	@echo "  make test              Run all tests with comprehensive error reporting"
 	@echo "  make test-unit         Run unit tests only"
 	@echo "  make test-integration  Run integration tests only"
 	@echo "  make test-system       Run system tests only"
@@ -63,11 +75,19 @@ help:
 	@echo "  make test-ui           Run UI integration tests"
 	@echo "  make test-threading    Run threading/concurrency tests"
 	@echo ""
-	@echo "Build Only:"
-	@echo "  make build-unit        Build unit tests without running"
-	@echo "  make build-integration Build integration tests without running"
-	@echo "  make build-system      Build system tests without running"
-	@echo ""
-	@echo "Maintenance:"
+	@echo "Test Management:"
+	@echo "  make setup-ignore      Set up test ignore patterns (for WIP tests)"
+	@echo "  make show-ignore       Show current ignore patterns"
 	@echo "  make clean             Clean test executables"
-	@echo "  make help              Show this help"
+	@echo ""
+	@echo "Enhanced Features:"
+	@echo "  • Automatic test filtering via .test_ignore file"
+	@echo "  • Comprehensive error traces for build and runtime failures"
+	@echo "  • Support for regex patterns and folder exclusions"
+	@echo "  • WIP (Work in Progress) test management"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make test              # Run all tests with full error reporting"
+	@echo "  make setup-ignore      # Configure tests to skip (like event_visualizer.*)"
+	@echo "  make show-ignore       # See what tests are being skipped"
+	@echo "  make help              # Show this help"

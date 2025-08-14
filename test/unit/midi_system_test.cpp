@@ -328,6 +328,7 @@ TEST_UNIT(MidiLatency, TimestampAccuracy) {
     MidiMessage msg2(0x90, 61, 100);
     
     auto end_time = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     
     // Verify timestamp ordering
     ASSERT_TRUE(msg1.timestamp < msg2.timestamp);
@@ -336,6 +337,9 @@ TEST_UNIT(MidiLatency, TimestampAccuracy) {
     uint64_t time_diff = msg2.timestamp - msg1.timestamp;
     ASSERT_TRUE(time_diff >= 90);   // At least 90μs
     ASSERT_TRUE(time_diff <= 200);  // At most 200μs (allowing for system jitter)
+    
+    // Use the timing variables to avoid warnings
+    ASSERT_TRUE(duration.count() > 0);  // Ensure test took some time
 }
 
 // ============================================================================
@@ -345,9 +349,19 @@ TEST_UNIT(MidiLatency, TimestampAccuracy) {
 int main() {
     std::cout << "🎵 MIDI System Unit Tests - FIXED VERSION" << std::endl;
     std::cout << "==========================================" << std::endl;
+    std::cout << std::endl;
     
     auto& runner = TestFramework::TestRunner::getInstance();
-    auto results = runner.runCategory("unit/MidiMessage");
     
-    return results.failed_tests == 0 ? 0 : 1;
+    // Run all MIDI-related test categories
+    auto results1 = runner.runCategory("unit/MidiMessage");
+    auto results2 = runner.runCategory("unit/MidiQueue");
+    auto results3 = runner.runCategory("unit/MidiProcessor");
+    auto results4 = runner.runCategory("unit/MidiPerformance");
+    auto results5 = runner.runCategory("unit/MidiLatency");
+    
+    int total_failed = results1.failed_tests + results2.failed_tests + results3.failed_tests + 
+                      results4.failed_tests + results5.failed_tests;
+    
+    return total_failed == 0 ? 0 : 1;
 }
