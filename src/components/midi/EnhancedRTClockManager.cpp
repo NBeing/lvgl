@@ -1,6 +1,7 @@
 #include "EnhancedRTClockManager.h"
 #include "components/parameter/ParameterManager.h"
 #include "components/parameter/MidiParameterBridge.h"
+#include "SequencerMidiController.h"
 #include <iostream>
 #include <algorithm>
 
@@ -472,9 +473,15 @@ void EnhancedRTClockManager::handleMidiInputInRT(const RTMidiInputEvent& event) 
             std::cout << "[Enhanced RT] 🎛️ Processing CC in RT: Ch" << (int)channel 
                       << " CC:" << (int)event.data1 << " Val:" << (int)event.data2 << std::endl;
             
-            // NEW: Route MIDI CC through unified parameter system
-            auto& midi_bridge = Parameters::MidiParameterBridge::getInstance();
-            midi_bridge.processMidiCC(channel, event.data1, event.data2);
+            // First try sequencer-specific MIDI control
+            auto& sequencer_controller = MIDI::SequencerMidiController::getInstance();
+            bool handled_by_sequencer = sequencer_controller.processSequencerMidiCC(channel, event.data1, event.data2);
+            
+            // If not handled by sequencer, route through general parameter system
+            if (!handled_by_sequencer) {
+                auto& midi_bridge = Parameters::MidiParameterBridge::getInstance();
+                midi_bridge.processMidiCC(channel, event.data1, event.data2);
+            }
             break;
         }
         

@@ -1,8 +1,10 @@
 #include <lvgl.h>
 #include <iostream>
 
-// Choose between old and new architecture
-#define USE_THREADED_ARCHITECTURE 1
+// Choose between old and new architecture based on build flag
+#ifndef USE_THREADED_ARCHITECTURE
+    #define USE_THREADED_ARCHITECTURE 0  // Default to old architecture if not defined
+#endif
 
 #if USE_THREADED_ARCHITECTURE
     #include "components/app/ThreadedSynthApp.h"
