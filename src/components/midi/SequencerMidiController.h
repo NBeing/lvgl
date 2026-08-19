@@ -122,7 +122,7 @@ public:
         SequencerMidiEvent(SequencerParameterID param, float value, uint8_t channel, 
                           uint8_t cc, uint8_t raw_value)
             : parameter_id(param), normalized_value(value), midi_channel(channel),
-              midi_cc(cc), raw_midi_value(raw_value), timestamp(lv_tick_get()) {}
+              midi_cc(cc), raw_midi_value(raw_value), timestamp(0) {} // Timestamp set in implementation
     };
     
     /**

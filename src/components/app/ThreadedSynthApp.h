@@ -32,6 +32,7 @@
 #include "components/ui/SettingsTab.h"
 #include "components/ui/ClockTab.h"
 #include "components/ui/MidiMonitorTab.h"
+#include "components/ui/ParameterBrowserTab.h"
 #include "components/midi/UnifiedMidiManager.h"
 #include "hardware/MidiHandler.h"
 #include "components/parameter/ParameterManager.h"
@@ -87,6 +88,7 @@ private:
     std::unique_ptr<SettingsTab> settings_tab_;
     std::unique_ptr<ClockTab> clock_tab_;
     std::unique_ptr<MidiMonitorTab> midi_monitor_tab_;
+    std::unique_ptr<ParameterBrowserTab> parameter_browser_tab_;
     MidiMonitorTab* midi_monitor_tab_ptr_ = nullptr;  // Raw pointer for updates
     
     // LVGL objects (for platform compatibility)
@@ -620,7 +622,11 @@ private:
         // Connect the MIDI monitor to the UnifiedMidiManager for logging
         UnifiedMidiManager::getInstance().setMidiMonitor(&midi_monitor_tab_ptr_->getMonitor());
         
-        std::cout << "Created 6 tabs: Main, Hello, World, Settings, Clock, MIDI Monitor" << std::endl;
+        // Create Parameter Browser Tab
+        parameter_browser_tab_ = std::make_unique<ParameterBrowserTab>();
+        window_manager_->addTab(std::move(parameter_browser_tab_));
+        
+        std::cout << "Created 7 tabs: Main, Hello, World, Settings, Clock, MIDI Monitor, Parameters" << std::endl;
     }
     
     bool startUIThread() {

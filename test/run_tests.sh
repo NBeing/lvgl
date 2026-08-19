@@ -3,8 +3,6 @@
 # LVGL MIDI Framework Test Runner - Enhanced Edition
 # Features: Test filtering, comprehensive error reporting, and WIP test handling
 
-set -e  # Exit on any error
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -22,7 +20,7 @@ SYSTEM_DIR="$TEST_DIR/system"
 
 # Compiler settings
 CXX="g++"
-CXXFLAGS="-std=c++17 -I$TEST_DIR -I$TEST_DIR/framework -I$TEST_DIR/fixtures -pthread -O2 -Wall -Wextra"
+CXXFLAGS="-std=c++17 -I$TEST_DIR -I$TEST_DIR/framework -I$TEST_DIR/fixtures -I$TEST_DIR/../src -pthread -O2 -Wall -Wextra"
 
 # Error tracking arrays
 declare -a BUILD_ERRORS=()
@@ -110,17 +108,18 @@ build_and_run_test() {
         local runtime_output
         local runtime_exit_code
         
-        if runtime_output=$("$executable" 2>&1); then
-            runtime_exit_code=$?
-        else
-            runtime_exit_code=$?
-        fi
+        # Run the test and capture output
+        runtime_output=$("$executable" 2>&1)
+        runtime_exit_code=$?
         
         if [ $runtime_exit_code -eq 0 ]; then
             echo -e "${GREEN}✅ PASSED: $test_name${NC}"
             return 0
         else
             echo -e "${RED}❌ FAILED: $test_name (exit code: $runtime_exit_code)${NC}"
+            echo -e "${CYAN}📋 Test Framework Output:${NC}"
+            echo "$runtime_output" | sed 's/^/   /'
+            echo ""
             RUNTIME_ERRORS+=("$test_name|$runtime_exit_code|$runtime_output")
             return 1
         fi

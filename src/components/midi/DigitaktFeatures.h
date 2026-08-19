@@ -6,6 +6,7 @@
 #include <random>
 #include <chrono>
 #include <atomic>
+#include <mutex>
 #include <unordered_map>
 
 namespace MIDI {

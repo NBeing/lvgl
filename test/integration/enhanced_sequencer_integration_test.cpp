@@ -51,6 +51,7 @@
 #include "../../src/components/midi/ParameterLockManager.h"
 #include "../../src/components/midi/EnhancedSequencerStep.h"
 #include "../../src/components/midi/DigitaktFeatures.h"
+#include "../../src/components/midi/MidiEvents.h"
 #include "../../src/components/parameter/ParameterManager.h"
 #include <atomic>
 #include <thread>
@@ -115,7 +116,7 @@ public:
 // CHAPTER 1: ENHANCED STEP INTEGRATION
 // =============================================================================
 
-TEST_INTEGRATION(EnhancedSequencer_BasicStepIntegration) {
+TEST_INTEGRATION(EnhancedSequencer, BasicStepIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Basic Step Integration");
     
     StepSequencer sequencer;
@@ -135,15 +136,15 @@ TEST_INTEGRATION(EnhancedSequencer_BasicStepIntegration) {
     // Get the step back and verify
     const auto& retrieved_step = sequencer.getStep(0, 0);
     ASSERT_TRUE(retrieved_step.active, "Retrieved step should be active");
-    ASSERT_EQ(retrieved_step.note, 72U, "Retrieved step should have correct note");
-    ASSERT_EQ(retrieved_step.velocity, 110U, "Retrieved step should have correct velocity");
-    ASSERT_EQ(retrieved_step.length, 12U, "Retrieved step should have correct length");
+    ASSERT_EQ_NUM(retrieved_step.note, 72U, "Retrieved step should have correct note");
+    ASSERT_EQ_NUM(retrieved_step.velocity, 110U, "Retrieved step should have correct velocity");
+    ASSERT_EQ_NUM(retrieved_step.length, 12U, "Retrieved step should have correct length");
     
     sequencer.removeSequencerObserver(&observer);
     PASS("Basic step integration works correctly");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_ParameterLockIntegration) {
+TEST_INTEGRATION(EnhancedSequencer, ParameterLockIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Parameter Lock Integration");
     
     StepSequencer sequencer;
@@ -169,12 +170,12 @@ TEST_INTEGRATION(EnhancedSequencer_ParameterLockIntegration) {
     ASSERT_TRUE(step.hasParameterLock(43), "Step should have parameter lock 43");
     ASSERT_EQ(step.getLockedParameterValue(42), 0.75f, "Parameter lock 42 should have correct value");
     ASSERT_EQ(step.getLockedParameterValue(43), 0.50f, "Parameter lock 43 should have correct value");
-    ASSERT_EQ(step.getParameterLockCount(), 2U, "Step should have 2 parameter locks");
+    ASSERT_EQ_NUM(step.getParameterLockCount(), 2U, "Step should have 2 parameter locks");
     
     PASS("Parameter lock integration works correctly");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_ProbabilityIntegration) {
+TEST_INTEGRATION(EnhancedSequencer, ProbabilityIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Probability Integration");
     
     // This test verifies that probability works in a real sequencer context
@@ -211,7 +212,7 @@ TEST_INTEGRATION(EnhancedSequencer_ProbabilityIntegration) {
     PASS("Probability integration works correctly");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_MicroTimingIntegration) {
+TEST_INTEGRATION(EnhancedSequencer, MicroTimingIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Micro-Timing Integration");
     
     EnhancedSequencerStep step;
@@ -235,7 +236,7 @@ TEST_INTEGRATION(EnhancedSequencer_MicroTimingIntegration) {
     PASS("Micro-timing integration works correctly");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_RetriggerIntegration) {
+TEST_INTEGRATION(EnhancedSequencer, RetriggerIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Retrigger Integration");
     
     EnhancedSequencerStep step;
@@ -249,7 +250,7 @@ TEST_INTEGRATION(EnhancedSequencer_RetriggerIntegration) {
     uint32_t step_duration = 96;  // 1/16 note at 384 PPQN
     auto retrigger_times = step.calculateRetriggerTimes(step_start, step_duration);
     
-    ASSERT_EQ(retrigger_times.size(), 4U, "Should have main trigger + 3 retriggers");
+    ASSERT_EQ_NUM(retrigger_times.size(), 4U, "Should have main trigger + 3 retriggers");
     ASSERT_EQ(retrigger_times[0], step_start, "First trigger should be at step start");
     
     // Check timing intervals
@@ -259,8 +260,8 @@ TEST_INTEGRATION(EnhancedSequencer_RetriggerIntegration) {
     
     // Calculate retrigger velocities
     auto retrigger_velocities = step.calculateRetriggerVelocities();
-    ASSERT_EQ(retrigger_velocities.size(), 4U, "Should have velocity for each trigger");
-    ASSERT_EQ(retrigger_velocities[0], 127U, "First velocity should be base velocity");
+    ASSERT_EQ_NUM(retrigger_velocities.size(), 4U, "Should have velocity for each trigger");
+    ASSERT_EQ_NUM(retrigger_velocities[0], 127U, "First velocity should be base velocity");
     
     // Velocities should generally decrease
     for (size_t i = 1; i < retrigger_velocities.size(); ++i) {
@@ -270,7 +271,7 @@ TEST_INTEGRATION(EnhancedSequencer_RetriggerIntegration) {
     PASS("Retrigger integration works correctly");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_ConditionalTriggerIntegration) {
+TEST_INTEGRATION(EnhancedSequencer, ConditionalTriggerIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Conditional Trigger Integration");
     
     EnhancedSequencerStep first_step;
@@ -294,7 +295,7 @@ TEST_INTEGRATION(EnhancedSequencer_ConditionalTriggerIntegration) {
     PASS("Conditional trigger integration works correctly");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_FillModeIntegration) {
+TEST_INTEGRATION(EnhancedSequencer, FillModeIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Fill Mode Integration");
     
     auto& fillMgr = FillModeManager::getInstance();
@@ -335,7 +336,7 @@ TEST_INTEGRATION(EnhancedSequencer_FillModeIntegration) {
 // CHAPTER 2: COMPLEX FEATURE COMBINATIONS
 // =============================================================================
 
-TEST_INTEGRATION(EnhancedSequencer_CombinedFeatures) {
+TEST_INTEGRATION(EnhancedSequencer, CombinedFeatures) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Combined Features");
     
     // Create a step with multiple advanced features
@@ -371,10 +372,10 @@ TEST_INTEGRATION(EnhancedSequencer_CombinedFeatures) {
     ASSERT_EQ(adjusted_base, 1015U, "Micro-timing should be applied to base time");
     
     auto retrigger_times = complex_step.calculateRetriggerTimes(adjusted_base, 96);
-    ASSERT_EQ(retrigger_times.size(), 3U, "Should have main trigger + 2 retriggers");
+    ASSERT_EQ_NUM(retrigger_times.size(), 3U, "Should have main trigger + 2 retriggers");
     
     // Test parameter locks
-    ASSERT_EQ(complex_step.getParameterLockCount(), 2U, "Should have 2 parameter locks");
+    ASSERT_EQ_NUM(complex_step.getParameterLockCount(), 2U, "Should have 2 parameter locks");
     
     // Test configuration summary
     std::string summary = complex_step.getConfigurationSummary();
@@ -387,7 +388,7 @@ TEST_INTEGRATION(EnhancedSequencer_CombinedFeatures) {
     PASS("Combined features work correctly together");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_FeatureInteractions) {
+TEST_INTEGRATION(EnhancedSequencer, FeatureInteractions) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Feature Interactions");
     
     // Test interaction between probability and conditions
@@ -410,8 +411,8 @@ TEST_INTEGRATION(EnhancedSequencer_FeatureInteractions) {
     retrig_lock_step.setParameterLock(43, 0.4f);
     
     auto retrig_times = retrig_lock_step.calculateRetriggerTimes(0, 96);
-    ASSERT_EQ(retrig_times.size(), 4U, "Retriggers should work with parameter locks");
-    ASSERT_EQ(retrig_lock_step.getParameterLockCount(), 2U, "Parameter locks should be preserved");
+    ASSERT_EQ_NUM(retrig_times.size(), 4U, "Retriggers should work with parameter locks");
+    ASSERT_EQ_NUM(retrig_lock_step.getParameterLockCount(), 2U, "Parameter locks should be preserved");
     
     // Test interaction between micro-timing and swing
     uint32_t base_time = 1000;
@@ -432,7 +433,7 @@ TEST_INTEGRATION(EnhancedSequencer_FeatureInteractions) {
 // CHAPTER 3: PERFORMANCE INTEGRATION TESTING
 // =============================================================================
 
-TEST_INTEGRATION(EnhancedSequencer_PerformanceUnderLoad) {
+TEST_INTEGRATION(EnhancedSequencer, PerformanceUnderLoad) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Performance Under Load");
     
     const int num_tracks = 8;
@@ -502,7 +503,7 @@ TEST_INTEGRATION(EnhancedSequencer_PerformanceUnderLoad) {
          std::to_string(avg_time_per_evaluation) + " microseconds per evaluation");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_MemoryEfficiency) {
+TEST_INTEGRATION(EnhancedSequencer, MemoryEfficiency) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Memory Efficiency");
     
     const int num_patterns = 10;
@@ -562,7 +563,7 @@ TEST_INTEGRATION(EnhancedSequencer_MemoryEfficiency) {
 // CHAPTER 4: REAL-WORLD SCENARIO TESTING
 // =============================================================================
 
-TEST_INTEGRATION(EnhancedSequencer_DrumPatternScenario) {
+TEST_INTEGRATION(EnhancedSequencer, DrumPatternScenario) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Drum Pattern Scenario");
     
     // Create a realistic drum pattern with Digitakt-style features
@@ -675,7 +676,7 @@ TEST_INTEGRATION(EnhancedSequencer_DrumPatternScenario) {
     PASS("Drum pattern scenario works correctly");
 }
 
-TEST_INTEGRATION(EnhancedSequencer_MelodicSequenceScenario) {
+TEST_INTEGRATION(EnhancedSequencer, MelodicSequenceScenario) {
     PRINT_TEST_HEADER("Enhanced Sequencer - Melodic Sequence Scenario");
     
     // Create a melodic sequence with parameter locks and probability

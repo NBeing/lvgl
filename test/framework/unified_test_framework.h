@@ -198,51 +198,66 @@ public:
     }
     
     template<typename T>
-    static void assertEqual(const std::string& file, int line, const T& expected, const T& actual) {
+    static void assertEqual(const std::string& file, int line, const T& expected, const T& actual, const std::string& message = "") {
         if (expected != actual) {
             std::stringstream ss;
             ss << "Assertion failed at " << file << ":" << line 
                << " - Expected: " << expected << ", Actual: " << actual;
+            if (!message.empty()) {
+                ss << " (" << message << ")";
+            }
             throw std::runtime_error(ss.str());
         }
     }
     
     // Specialized string comparison for string literals
-    static void assertEqual(const std::string& file, int line, const char* expected, const std::string& actual) {
+    static void assertEqual(const std::string& file, int line, const char* expected, const std::string& actual, const std::string& message = "") {
         if (std::string(expected) != actual) {
             std::stringstream ss;
             ss << "Assertion failed at " << file << ":" << line 
                << " - Expected: " << expected << ", Actual: " << actual;
+            if (!message.empty()) {
+                ss << " (" << message << ")";
+            }
             throw std::runtime_error(ss.str());
         }
     }
     
-    static void assertEqual(const std::string& file, int line, const std::string& expected, const std::string& actual) {
+    static void assertEqual(const std::string& file, int line, const std::string& expected, const std::string& actual, const std::string& message = "") {
         if (expected != actual) {
             std::stringstream ss;
             ss << "Assertion failed at " << file << ":" << line 
                << " - Expected: " << expected << ", Actual: " << actual;
+            if (!message.empty()) {
+                ss << " (" << message << ")";
+            }
             throw std::runtime_error(ss.str());
         }
     }
     
     // Specialized for integer types to handle uint8_t vs int mismatches
     template<typename T1, typename T2>
-    static void assertEqualNumeric(const std::string& file, int line, T1 expected, T2 actual) {
+    static void assertEqualNumeric(const std::string& file, int line, T1 expected, T2 actual, const std::string& message = "") {
         if (static_cast<long long>(expected) != static_cast<long long>(actual)) {
             std::stringstream ss;
             ss << "Assertion failed at " << file << ":" << line 
                << " - Expected: " << static_cast<long long>(expected) 
                << ", Actual: " << static_cast<long long>(actual);
+            if (!message.empty()) {
+                ss << " (" << message << ")";
+            }
             throw std::runtime_error(ss.str());
         }
     }
     
-    static void assertNear(const std::string& file, int line, float expected, float actual, float tolerance) {
+    static void assertNear(const std::string& file, int line, float expected, float actual, float tolerance, const std::string& message = "") {
         if (std::abs(expected - actual) > tolerance) {
             std::stringstream ss;
             ss << "Assertion failed at " << file << ":" << line 
                << " - Expected: " << expected << " (±" << tolerance << "), Actual: " << actual;
+            if (!message.empty()) {
+                ss << " (" << message << ")";
+            }
             throw std::runtime_error(ss.str());
         }
     }
@@ -300,21 +315,32 @@ public:
     static TestFramework::TestRegistrar reg_system_##name("system", #name, test_system_##name); \
     static void test_system_##name()
 
-// Assertion macros
-#define ASSERT_TRUE(condition) \
-    TestFramework::TestRunner::assertTrue(__FILE__, __LINE__, condition)
+// Assertion macros - support both 1-arg and 2-arg forms
+#define ASSERT_TRUE(condition, ...) \
+    TestFramework::TestRunner::assertTrue(__FILE__, __LINE__, condition, ##__VA_ARGS__)
 
-#define ASSERT_FALSE(condition) \
-    TestFramework::TestRunner::assertTrue(__FILE__, __LINE__, !(condition))
+#define ASSERT_FALSE(condition, ...) \
+    TestFramework::TestRunner::assertTrue(__FILE__, __LINE__, !(condition), ##__VA_ARGS__)
 
-#define ASSERT_EQ(expected, actual) \
-    TestFramework::TestRunner::assertEqual(__FILE__, __LINE__, expected, actual)
+#define ASSERT_EQ(expected, actual, ...) \
+    TestFramework::TestRunner::assertEqual(__FILE__, __LINE__, expected, actual, ##__VA_ARGS__)
 
-#define ASSERT_EQ_NUM(expected, actual) \
-    TestFramework::TestRunner::assertEqualNumeric(__FILE__, __LINE__, expected, actual)
+#define ASSERT_EQ_NUM(expected, actual, ...) \
+    TestFramework::TestRunner::assertEqualNumeric(__FILE__, __LINE__, expected, actual, ##__VA_ARGS__)
 
-#define ASSERT_STR_EQ(expected, actual) \
-    TestFramework::TestRunner::assertEqual(__FILE__, __LINE__, std::string(expected), std::string(actual))
+#define ASSERT_STR_EQ(expected, actual, ...) \
+    TestFramework::TestRunner::assertEqual(__FILE__, __LINE__, std::string(expected), std::string(actual), ##__VA_ARGS__)
 
-#define ASSERT_NEAR(expected, actual, tolerance) \
-    TestFramework::TestRunner::assertNear(__FILE__, __LINE__, expected, actual, tolerance)
+#define ASSERT_NEAR(expected, actual, tolerance, ...) \
+    TestFramework::TestRunner::assertNear(__FILE__, __LINE__, expected, actual, tolerance, ##__VA_ARGS__)
+
+// Test convenience macros
+#define PRINT_TEST_HEADER(description) \
+    std::cout << "🧪 " << description << std::endl
+
+#define PASS(message) \
+    std::cout << "✅ " << message << std::endl
+
+// Test runner macro
+#define RUN_ALL_TESTS() \
+    TestFramework::TestRunner::getInstance().runAllTests().failed_tests

@@ -61,7 +61,7 @@ using namespace MIDI;
 // CHAPTER 1: PROBABILITY ENGINE TESTING
 // =============================================================================
 
-TEST_UNIT(ProbabilityEngine_AlwaysTrigger) {
+TEST_UNIT(ProbabilityEngine, AlwaysTrigger) {
     PRINT_TEST_HEADER("Probability Engine - Always Trigger (1.0)");
     
     // Test that probability 1.0 always triggers
@@ -73,7 +73,7 @@ TEST_UNIT(ProbabilityEngine_AlwaysTrigger) {
     PASS("Probability 1.0 always triggers correctly");
 }
 
-TEST_UNIT(ProbabilityEngine_NeverTrigger) {
+TEST_UNIT(ProbabilityEngine, NeverTrigger) {
     PRINT_TEST_HEADER("Probability Engine - Never Trigger (0.0)");
     
     // Test that probability 0.0 never triggers
@@ -85,7 +85,7 @@ TEST_UNIT(ProbabilityEngine_NeverTrigger) {
     PASS("Probability 0.0 never triggers correctly");
 }
 
-TEST_UNIT(ProbabilityEngine_SeedReproducibility) {
+TEST_UNIT(ProbabilityEngine, SeedReproducibility) {
     PRINT_TEST_HEADER("Probability Engine - Seed Reproducibility");
     
     // Test that same seed produces same sequence
@@ -109,7 +109,7 @@ TEST_UNIT(ProbabilityEngine_SeedReproducibility) {
     PASS("Seed reproducibility works correctly");
 }
 
-TEST_UNIT(ProbabilityEngine_StatisticalDistribution) {
+TEST_UNIT(ProbabilityEngine, StatisticalDistribution) {
     PRINT_TEST_HEADER("Probability Engine - Statistical Distribution");
     
     ProbabilityEngine::setSeed(42);
@@ -136,7 +136,7 @@ TEST_UNIT(ProbabilityEngine_StatisticalDistribution) {
     PASS("Statistical distribution is within expected tolerance");
 }
 
-TEST_UNIT(ProbabilityEngine_EdgeCases) {
+TEST_UNIT(ProbabilityEngine, EdgeCases) {
     PRINT_TEST_HEADER("Probability Engine - Edge Cases");
     
     // Test edge cases and invalid inputs
@@ -161,7 +161,7 @@ TEST_UNIT(ProbabilityEngine_EdgeCases) {
 // CHAPTER 2: MICRO-TIMING ENGINE TESTING
 // =============================================================================
 
-TEST_UNIT(MicroTimingEngine_BasicTiming) {
+TEST_UNIT(MicroTimingEngine, BasicTiming) {
     PRINT_TEST_HEADER("Micro-Timing Engine - Basic Timing");
     
     uint32_t base_time = 1000;
@@ -181,23 +181,23 @@ TEST_UNIT(MicroTimingEngine_BasicTiming) {
     PASS("Basic timing calculations work correctly");
 }
 
-TEST_UNIT(MicroTimingEngine_OffsetClamping) {
+TEST_UNIT(MicroTimingEngine, OffsetClamping) {
     PRINT_TEST_HEADER("Micro-Timing Engine - Offset Clamping");
     
     // Test offset clamping
     int8_t clamped_high = MicroTimingEngine::clampMicroTiming(100);
-    ASSERT_EQ(clamped_high, 50, "High offset should be clamped to maximum");
+    ASSERT_EQ_NUM(clamped_high, 50, "High offset should be clamped to maximum");
     
     int8_t clamped_low = MicroTimingEngine::clampMicroTiming(-100);
-    ASSERT_EQ(clamped_low, -50, "Low offset should be clamped to minimum");
+    ASSERT_EQ_NUM(clamped_low, -50, "Low offset should be clamped to minimum");
     
     int8_t not_clamped = MicroTimingEngine::clampMicroTiming(25);
-    ASSERT_EQ(not_clamped, 25, "Valid offset should not be clamped");
+    ASSERT_EQ_NUM(not_clamped, 25, "Valid offset should not be clamped");
     
     PASS("Offset clamping works correctly");
 }
 
-TEST_UNIT(MicroTimingEngine_SwingTiming) {
+TEST_UNIT(MicroTimingEngine, SwingTiming) {
     PRINT_TEST_HEADER("Micro-Timing Engine - Swing Timing");
     
     uint32_t base_time = 0;
@@ -218,7 +218,7 @@ TEST_UNIT(MicroTimingEngine_SwingTiming) {
     PASS("Swing timing calculations work correctly");
 }
 
-TEST_UNIT(MicroTimingEngine_MillisecondConversion) {
+TEST_UNIT(MicroTimingEngine, MillisecondConversion) {
     PRINT_TEST_HEADER("Micro-Timing Engine - Millisecond Conversion");
     
     float bpm = 120.0f;
@@ -243,7 +243,7 @@ TEST_UNIT(MicroTimingEngine_MillisecondConversion) {
 // CHAPTER 3: RETRIGGER ENGINE TESTING
 // =============================================================================
 
-TEST_UNIT(RetriggerEngine_BasicRetriggering) {
+TEST_UNIT(RetriggerEngine, BasicRetriggering) {
     PRINT_TEST_HEADER("Retrigger Engine - Basic Retriggering");
     
     uint32_t step_start = 0;
@@ -264,7 +264,7 @@ TEST_UNIT(RetriggerEngine_BasicRetriggering) {
     PASS("Basic retriggering works correctly");
 }
 
-TEST_UNIT(RetriggerEngine_VelocityRamping) {
+TEST_UNIT(RetriggerEngine, VelocityRamping) {
     PRINT_TEST_HEADER("Retrigger Engine - Velocity Ramping");
     
     uint8_t base_velocity = 127;
@@ -288,7 +288,7 @@ TEST_UNIT(RetriggerEngine_VelocityRamping) {
     PASS("Velocity ramping works correctly");
 }
 
-TEST_UNIT(RetriggerEngine_CountClamping) {
+TEST_UNIT(RetriggerEngine, CountClamping) {
     PRINT_TEST_HEADER("Retrigger Engine - Count Clamping");
     
     uint8_t clamped_high = RetriggerEngine::clampRetriggerCount(20);
@@ -300,7 +300,7 @@ TEST_UNIT(RetriggerEngine_CountClamping) {
     PASS("Retrigger count clamping works correctly");
 }
 
-TEST_UNIT(RetriggerEngine_RateConversion) {
+TEST_UNIT(RetriggerEngine, RateConversion) {
     PRINT_TEST_HEADER("Retrigger Engine - Rate Conversion");
     
     int ppqn = 96;
@@ -318,7 +318,7 @@ TEST_UNIT(RetriggerEngine_RateConversion) {
 // CHAPTER 4: CONDITIONAL TRIGGER ENGINE TESTING
 // =============================================================================
 
-TEST_UNIT(ConditionalTriggerEngine_FirstCondition) {
+TEST_UNIT(ConditionalTriggerEngine, FirstCondition) {
     PRINT_TEST_HEADER("Conditional Trigger Engine - First Condition");
     
     // Test FIRST condition
@@ -335,7 +335,7 @@ TEST_UNIT(ConditionalTriggerEngine_FirstCondition) {
     PASS("FIRST condition works correctly");
 }
 
-TEST_UNIT(ConditionalTriggerEngine_NotFirstCondition) {
+TEST_UNIT(ConditionalTriggerEngine, NotFirstCondition) {
     PRINT_TEST_HEADER("Conditional Trigger Engine - Not First Condition");
     
     // Test NOT_FIRST condition
@@ -352,7 +352,7 @@ TEST_UNIT(ConditionalTriggerEngine_NotFirstCondition) {
     PASS("NOT_FIRST condition works correctly");
 }
 
-TEST_UNIT(ConditionalTriggerEngine_FillConditions) {
+TEST_UNIT(ConditionalTriggerEngine, FillConditions) {
     PRINT_TEST_HEADER("Conditional Trigger Engine - Fill Conditions");
     
     // Test FILL condition
@@ -374,7 +374,7 @@ TEST_UNIT(ConditionalTriggerEngine_FillConditions) {
     PASS("Fill conditions work correctly");
 }
 
-TEST_UNIT(ConditionalTriggerEngine_NeighborConditions) {
+TEST_UNIT(ConditionalTriggerEngine, NeighborConditions) {
     PRINT_TEST_HEADER("Conditional Trigger Engine - Neighbor Conditions");
     
     SequencerContext context(1, 5, 0, false);
@@ -393,7 +393,7 @@ TEST_UNIT(ConditionalTriggerEngine_NeighborConditions) {
     PASS("Neighbor conditions work correctly");
 }
 
-TEST_UNIT(ConditionalTriggerEngine_ConditionNames) {
+TEST_UNIT(ConditionalTriggerEngine, ConditionNames) {
     PRINT_TEST_HEADER("Conditional Trigger Engine - Condition Names");
     
     const char* first_name = ConditionalTriggerEngine::getConditionName(
@@ -411,7 +411,7 @@ TEST_UNIT(ConditionalTriggerEngine_ConditionNames) {
 // CHAPTER 5: FILL MODE MANAGER TESTING
 // =============================================================================
 
-TEST_UNIT(FillModeManager_BasicFunctionality) {
+TEST_UNIT(FillModeManager, BasicFunctionality) {
     PRINT_TEST_HEADER("Fill Mode Manager - Basic Functionality");
     
     auto& fillMgr = FillModeManager::getInstance();
@@ -430,7 +430,7 @@ TEST_UNIT(FillModeManager_BasicFunctionality) {
     PASS("Fill mode basic functionality works correctly");
 }
 
-TEST_UNIT(FillModeManager_TrackPatterns) {
+TEST_UNIT(FillModeManager, TrackPatterns) {
     PRINT_TEST_HEADER("Fill Mode Manager - Track Patterns");
     
     auto& fillMgr = FillModeManager::getInstance();
@@ -455,7 +455,7 @@ TEST_UNIT(FillModeManager_TrackPatterns) {
     PASS("Track pattern management works correctly");
 }
 
-TEST_UNIT(FillModeManager_SingletonPattern) {
+TEST_UNIT(FillModeManager, SingletonPattern) {
     PRINT_TEST_HEADER("Fill Mode Manager - Singleton Pattern");
     
     auto& fillMgr1 = FillModeManager::getInstance();
@@ -477,7 +477,7 @@ TEST_UNIT(FillModeManager_SingletonPattern) {
 // CHAPTER 6: SEQUENCER CONTEXT TESTING
 // =============================================================================
 
-TEST_UNIT(SequencerContext_BasicProperties) {
+TEST_UNIT(SequencerContext, BasicProperties) {
     PRINT_TEST_HEADER("Sequencer Context - Basic Properties");
     
     SequencerContext context(2, 7, 3, true);
@@ -490,7 +490,7 @@ TEST_UNIT(SequencerContext_BasicProperties) {
     PASS("Basic properties work correctly");
 }
 
-TEST_UNIT(SequencerContext_NeighborStates) {
+TEST_UNIT(SequencerContext, NeighborStates) {
     PRINT_TEST_HEADER("Sequencer Context - Neighbor States");
     
     SequencerContext context(0, 0, 0, false);
@@ -510,7 +510,7 @@ TEST_UNIT(SequencerContext_NeighborStates) {
     PASS("Neighbor states work correctly");
 }
 
-TEST_UNIT(SequencerContext_PatternChainStates) {
+TEST_UNIT(SequencerContext, PatternChainStates) {
     PRINT_TEST_HEADER("Sequencer Context - Pattern Chain States");
     
     SequencerContext context(0, 0, 0, false);
@@ -534,7 +534,7 @@ TEST_UNIT(SequencerContext_PatternChainStates) {
 // CHAPTER 7: ENHANCED SEQUENCER STEP TESTING
 // =============================================================================
 
-TEST_UNIT(EnhancedSequencerStep_BasicProperties) {
+TEST_UNIT(EnhancedSequencerStep, BasicProperties) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Basic Properties");
     
     EnhancedSequencerStep step;
@@ -559,7 +559,7 @@ TEST_UNIT(EnhancedSequencerStep_BasicProperties) {
     PASS("Basic properties work correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_ProbabilityIntegration) {
+TEST_UNIT(EnhancedSequencerStep, ProbabilityIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Probability Integration");
     
     EnhancedSequencerStep step;
@@ -585,7 +585,7 @@ TEST_UNIT(EnhancedSequencerStep_ProbabilityIntegration) {
     PASS("Probability integration works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_MicroTimingIntegration) {
+TEST_UNIT(EnhancedSequencerStep, MicroTimingIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Micro-Timing Integration");
     
     EnhancedSequencerStep step;
@@ -609,7 +609,7 @@ TEST_UNIT(EnhancedSequencerStep_MicroTimingIntegration) {
     PASS("Micro-timing integration works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_RetriggerIntegration) {
+TEST_UNIT(EnhancedSequencerStep, RetriggerIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Retrigger Integration");
     
     EnhancedSequencerStep step;
@@ -639,7 +639,7 @@ TEST_UNIT(EnhancedSequencerStep_RetriggerIntegration) {
     PASS("Retrigger integration works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_ConditionalTriggerIntegration) {
+TEST_UNIT(EnhancedSequencerStep, ConditionalTriggerIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Conditional Trigger Integration");
     
     EnhancedSequencerStep step;
@@ -661,7 +661,7 @@ TEST_UNIT(EnhancedSequencerStep_ConditionalTriggerIntegration) {
     PASS("Conditional trigger integration works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_ParameterLockIntegration) {
+TEST_UNIT(EnhancedSequencerStep, ParameterLockIntegration) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Parameter Lock Integration");
     
     EnhancedSequencerStep step;
@@ -696,7 +696,7 @@ TEST_UNIT(EnhancedSequencerStep_ParameterLockIntegration) {
     PASS("Parameter lock integration works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_ComprehensiveEvaluation) {
+TEST_UNIT(EnhancedSequencerStep, ComprehensiveEvaluation) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Comprehensive Evaluation");
     
     EnhancedSequencerStep step;
@@ -728,7 +728,7 @@ TEST_UNIT(EnhancedSequencerStep_ComprehensiveEvaluation) {
     PASS("Comprehensive evaluation works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_AdvancedFeatureDetection) {
+TEST_UNIT(EnhancedSequencerStep, AdvancedFeatureDetection) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Advanced Feature Detection");
     
     EnhancedSequencerStep simple_step;
@@ -757,7 +757,7 @@ TEST_UNIT(EnhancedSequencerStep_AdvancedFeatureDetection) {
     PASS("Advanced feature detection works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_CopyOperations) {
+TEST_UNIT(EnhancedSequencerStep, CopyOperations) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Copy Operations");
     
     EnhancedSequencerStep source_step;
@@ -799,7 +799,7 @@ TEST_UNIT(EnhancedSequencerStep_CopyOperations) {
     PASS("Copy operations work correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_MemoryUsage) {
+TEST_UNIT(EnhancedSequencerStep, MemoryUsage) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Memory Usage");
     
     EnhancedSequencerStep empty_step;
@@ -816,7 +816,7 @@ TEST_UNIT(EnhancedSequencerStep_MemoryUsage) {
     PASS("Memory usage calculation works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_ConfigurationSummary) {
+TEST_UNIT(EnhancedSequencerStep, ConfigurationSummary) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Configuration Summary");
     
     EnhancedSequencerStep step;
@@ -845,7 +845,7 @@ TEST_UNIT(EnhancedSequencerStep_ConfigurationSummary) {
     PASS("Configuration summary works correctly");
 }
 
-TEST_UNIT(EnhancedSequencerStep_ResetFunctionality) {
+TEST_UNIT(EnhancedSequencerStep, ResetFunctionality) {
     PRINT_TEST_HEADER("Enhanced Sequencer Step - Reset Functionality");
     
     EnhancedSequencerStep step;
@@ -883,7 +883,7 @@ TEST_UNIT(EnhancedSequencerStep_ResetFunctionality) {
 // CHAPTER 8: PERFORMANCE AND INTEGRATION TESTING
 // =============================================================================
 
-TEST_INTEGRATION(DigitaktFeatures_PerformanceTest) {
+TEST_INTEGRATION(DigitaktFeatures, PerformanceTest) {
     PRINT_TEST_HEADER("Digitakt Features - Performance Test");
     
     const int iterations = 10000;
@@ -921,7 +921,7 @@ TEST_INTEGRATION(DigitaktFeatures_PerformanceTest) {
          std::to_string(avg_time_per_iteration) + " microseconds per iteration");
 }
 
-TEST_INTEGRATION(DigitaktFeatures_ThreadSafetyTest) {
+TEST_INTEGRATION(DigitaktFeatures, ThreadSafetyTest) {
     PRINT_TEST_HEADER("Digitakt Features - Thread Safety Test");
     
     const int num_threads = 4;
@@ -965,7 +965,7 @@ TEST_INTEGRATION(DigitaktFeatures_ThreadSafetyTest) {
     PASS("Thread safety test passed");
 }
 
-TEST_INTEGRATION(DigitaktFeatures_MemoryUsageTest) {
+TEST_INTEGRATION(DigitaktFeatures, MemoryUsageTest) {
     PRINT_TEST_HEADER("Digitakt Features - Memory Usage Test");
     
     const int num_steps = 1000;
@@ -1009,7 +1009,7 @@ TEST_INTEGRATION(DigitaktFeatures_MemoryUsageTest) {
 // CHAPTER 9: EDGE CASES AND ERROR HANDLING
 // =============================================================================
 
-TEST_UNIT(DigitaktFeatures_EdgeCaseHandling) {
+TEST_UNIT(DigitaktFeatures, EdgeCaseHandling) {
     PRINT_TEST_HEADER("Digitakt Features - Edge Case Handling");
     
     // Test extreme values for micro-timing
@@ -1034,7 +1034,7 @@ TEST_UNIT(DigitaktFeatures_EdgeCaseHandling) {
     PASS("Edge case handling works correctly");
 }
 
-TEST_UNIT(DigitaktFeatures_InvalidInputHandling) {
+TEST_UNIT(DigitaktFeatures, InvalidInputHandling) {
     PRINT_TEST_HEADER("Digitakt Features - Invalid Input Handling");
     
     // Test invalid context for conditional triggers
@@ -1057,7 +1057,7 @@ TEST_UNIT(DigitaktFeatures_InvalidInputHandling) {
     PASS("Invalid input handling works correctly");
 }
 
-TEST_UNIT(DigitaktFeatures_BoundaryConditions) {
+TEST_UNIT(DigitaktFeatures, BoundaryConditions) {
     PRINT_TEST_HEADER("Digitakt Features - Boundary Conditions");
     
     // Test minimum and maximum valid values

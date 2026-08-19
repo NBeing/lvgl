@@ -250,3 +250,34 @@ std::shared_ptr<Parameter> ParameterFactory::createFilterResonance(uint8_t cc) {
         "Filter resonance/emphasis"
     );
 }
+
+// ============================================================================
+// Missing ParameterBinder Methods
+// ============================================================================
+
+bool ParameterBinder::loadSynthDefinitionFromFile(const std::string& file_path) {
+    std::cout << "[ParameterBinder] 📁 Loading synthesizer definition from file: " << file_path << std::endl;
+    
+    // For now, just return false since we don't have JSON parsing implemented
+    // In a real implementation, this would parse the JSON file and create the synth definition
+    std::cout << "[ParameterBinder] ❌ File loading not yet implemented" << std::endl;
+    return false;
+}
+
+std::vector<ParameterCategory> ParameterBinder::getAvailableCategories() const {
+    std::vector<ParameterCategory> categories;
+    
+    if (!current_synth_) {
+        return categories;
+    }
+    
+    // Collect all unique categories from current parameters
+    for (const auto& param : current_synth_->parameters) {
+        ParameterCategory cat = param->getCategory();
+        if (std::find(categories.begin(), categories.end(), cat) == categories.end()) {
+            categories.push_back(cat);
+        }
+    }
+    
+    return categories;
+}

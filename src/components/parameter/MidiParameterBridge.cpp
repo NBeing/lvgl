@@ -34,7 +34,7 @@ void MidiParameterBridge::processMidiCC(uint8_t channel, uint8_t cc, uint8_t val
         ParameterChangeEvent event = ParameterChangeEvent::fromMidiCC(
             mapped_param, normalized_value, channel, cc);
         
-        // Process through parameter manager
+        // Process through parameter manager (will notify UI bridge if it's a UI parameter)
         param_manager.processParameterChange(event);
         
         stats_.midi_cc_mapped.fetch_add(1);
